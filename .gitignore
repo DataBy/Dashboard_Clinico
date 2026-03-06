@@ -1,14 +1,27 @@
-# Dependencies
+# ==========================================
+# 1. FRONTEND: Dependencies & Caches
+# ==========================================
 node_modules/
+.npm/
+.pnpm-store/
+.yarn/
 
-# Build outputs
+# ==========================================
+# 2. FRONTEND: Build outputs & Tests
+# ==========================================
 dist/
 build/
 out/
 .vite/
 *.tsbuildinfo
+coverage/
+.nyc_output/
+playwright-report/
+test-results/
 
-# Logs
+# ==========================================
+# 3. FRONTEND: Logs
+# ==========================================
 logs/
 *.log
 npm-debug.log*
@@ -17,23 +30,48 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
-# Environment and local secrets
+# ==========================================
+# 4. BACKEND: C++ y CMake
+# ==========================================
+backend/build/
+CMakeCache.txt
+CMakeFiles/
+CMakeScripts/
+*.cmake
+*.o
+*.obj
+*.exe
+*.out
+*.app
+*.dylib
+*.so
+
+# ==========================================
+# 5. BACKEND: Bases de Datos SQLite (Módulo 4)
+# ==========================================
+*.db
+*.sqlite
+*.sqlite3
+*.db-journal
+backend/data/*.db
+backend/data/*.sqlite
+
+# ==========================================
+# 6. INFRAESTRUCTURA: Environment y Docker
+# ==========================================
 .env
 .env.local
 .env.*.local
+docker/backend/envs/.env
+docker/frontend/envs/.env
 
-# Test and coverage artifacts
-coverage/
-.nyc_output/
-playwright-report/
-test-results/
+# EXCEPCIONES IMPORTANTES: Plantillas de Docker que SÍ deben subirse
+!docker/backend/envs/.env.dev
+!docker/backend/envs/.env.prod
 
-# Package manager caches
-.npm/
-.pnpm-store/
-.yarn/
-
-# IDE/editor
+# ==========================================
+# 7. IDE/editor & OS files
+# ==========================================
 .idea/
 .vscode/
 *.suo
@@ -43,8 +81,6 @@ test-results/
 *.swp
 *.swo
 *~
-
-# OS files
 .DS_Store
 Thumbs.db
 Desktop.ini
