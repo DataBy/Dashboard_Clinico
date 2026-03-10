@@ -1,0 +1,19 @@
+Codigo,Nombre,Area,Especialidad,Descripcion
+D-100,Infarto,Medicina Interna,Cardiologia,Descripcion detallada de Infarto
+D-101,Asma,Medicina Interna,Cardiologia,Descripcion detallada de Asma
+D-102,Arritmia,Medicina Interna,Cardiologia,Descripcion detallada de Arritmia
+D-103,Infarto,Medicina Interna,Neumologia,Descripcion detallada de Infarto
+D-104,Asma,Medicina Interna,Neumologia,Descripcion detallada de Asma
+D-105,Arritmia,Medicina Interna,Neumologia,Descripcion detallada de Arritmia
+D-106,Apendicitis,Cirugia,General,Descripcion detallada de Apendicitis
+D-107,Fractura de Femur,Cirugia,General,Descripcion detallada de Fractura de Femur
+D-108,Hernia,Cirugia,General,Descripcion detallada de Hernia
+D-109,Apendicitis,Cirugia,Traumatologia,Descripcion detallada de Apendicitis
+D-110,Fractura de Femur,Cirugia,Traumatologia,Descripcion detallada de Fractura de Femur
+D-111,Hernia,Cirugia,Traumatologia,Descripcion detallada de Hernia
+D-112,Ictericia,Pediatria,Neonatologia,Descripcion detallada de Ictericia
+D-113,Reflujo,Pediatria,Neonatologia,Descripcion detallada de Reflujo
+D-114,Varicela,Pediatria,Neonatologia,Descripcion detallada de Varicela
+D-115,Ictericia,Pediatria,Infantil,Descripcion detallada de Ictericia
+D-116,Reflujo,Pediatria,Infantil,Descripcion detallada de Reflujo
+D-117,Varicela,Pediatria,Infantil,Descripcion detallada de Varicela

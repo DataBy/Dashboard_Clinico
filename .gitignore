@@ -1,31 +1,78 @@
 # Frontend dependencies
 frontend/node_modules/
+node_modules/
 
-# Build output
+# Frontend build and tooling output
 frontend/dist/
 frontend/build/
 frontend/coverage/
-
-# Tooling cache
 frontend/.vite/
 frontend/.cache/
 frontend/.eslintcache
 frontend/*.tsbuildinfo
+dist/
+build/
+out/
+.vite/
+coverage/
+.nyc_output/
+playwright-report/
+test-results/
+
+# Package manager caches
+.npm/
+.pnpm-store/
+.yarn/
 
 # Environment files
 frontend/.env
 frontend/.env.*
 !frontend/.env.example
+.env
+.env.local
+.env.*.local
 
 # Logs
-frontend/*.log
-frontend/npm-debug.log*
-frontend/yarn-debug.log*
-frontend/yarn-error.log*
-frontend/pnpm-debug.log*
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
 
-# Editor and OS files
+# C/C++ build artifacts
+*.exe
+*.out
+*.o
+*.obj
+*.a
+*.lib
+*.dll
+*.so
+*.dylib
+*.pdb
+*.ilk
+*.idb
+*.pch
+cmake-build-*/
+CMakeFiles/
+CMakeCache.txt
+compile_commands.json
+
+# Editor and IDE files
 .vscode/
 .idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.swp
+*.swo
+*~
+
+# OS files
 .DS_Store
 Thumbs.db
+Desktop.ini
+$RECYCLE.BIN/
