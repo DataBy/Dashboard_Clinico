@@ -1,11 +1,8 @@
 
-  # Crear diseño solicitado
+Levantar Frontend:
 
-  This is a code bundle for Crear diseño solicitado. The original project is available at https://www.figma.com/design/a8HcPerDqQixTkiqfbk0rt/Crear-dise%C3%B1o-solicitado.
+  npm install
+  npm run dev
 
-  ## Running the code
-
-  Run `npm i` to install the dependencies.
-
-  Run `npm run dev` to start the development server.
-  
+  Levantar backend:
+  .\backend\clinic_api.exe
