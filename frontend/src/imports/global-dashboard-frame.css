@@ -1,0 +1,66 @@
+You are a senior UI/UX designer and frontend engineer.
+
+I have an existing clinical dashboard UI that must remain visually identical in layout, spacing, components, typography, and structure.
+
+Your task is ONLY to introduce a global container border style inspired by the reference dashboard.
+
+## Objective
+
+Replicate the soft rounded purple border frame that surrounds the entire application in the reference design.
+
+Do NOT modify:
+- Layout structure
+- Sidebar placement
+- Card design
+- Colors of components
+- Typography
+- Spacing
+- Content
+- Icons
+
+The only visual addition should be a **global UI frame**.
+
+## Border Frame Requirements
+
+Add a wrapper container around the entire application with:
+
+• A subtle purple border  
+• Large rounded corners  
+• Soft elevation  
+• Clean modern dashboard feel
+
+Style specifications:
+
+- Border radius: 28px – 32px
+- Border thickness: 3px – 4px
+- Border color: soft purple gradient or solid purple (#6A5AE0 or similar)
+- Optional subtle shadow for depth
+- Internal padding so content does not touch the border
+
+## Layout Behavior
+
+The frame must:
+
+- Wrap the entire application viewport
+- Preserve the sidebar alignment
+- Preserve responsive behavior
+- Maintain the current UI hierarchy
+
+## Design Intent
+
+The frame should make the application look like a **contained dashboard interface panel**, similar to modern SaaS admin dashboards.
+
+It must feel:
+
+- clean
+- minimal
+- elegant
+- modern
+
+## Output
+
+Provide:
+
+1. Updated layout structure
+2. CSS / Tailwind / style rules for the global border frame
+3. Ensure the UI remains identical except for the new outer frame.
