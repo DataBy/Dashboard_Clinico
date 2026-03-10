@@ -46,17 +46,63 @@ function formatMonthTitle(date: Date) {
 }
 
 function parseConsultaDate(value: string) {
-  const [datePart, timePart] = value.split(" ");
-  const [year, month, day] = datePart.split("-").map(Number);
-
-  if (!year || !month || !day) {
+  const parsed = parseDateTime(value);
+  if (!parsed) {
     return { date: dateToKey(new Date()), time: "08:00" };
   }
 
   return {
-    date: `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`,
-    time: timePart?.slice(0, 5) ?? "08:00",
+    date: dateToKey(parsed),
+    time: `${String(parsed.getHours()).padStart(2, "0")}:${String(parsed.getMinutes()).padStart(2, "0")}`,
   };
+}
+
+function parseDateTime(value: string) {
+  const normalized = value.includes("T") ? value : value.replace(" ", "T");
+  const date = new Date(normalized);
+  if (Number.isNaN(date.getTime())) {
+    return null;
+  }
+  return date;
+}
+
+function toDateKey(value: string) {
+  const parsed = parseDateTime(value);
+  return parsed ? dateToKey(parsed) : null;
+}
+
+function computeAverageAttentionMinutes(
+  pacientes: ApiPaciente[],
+  consultas: Array<{ cedulaPaciente: string; fecha: string }>
+) {
+  const pacientesByCedula = new Map(pacientes.map((paciente) => [paciente.cedula, paciente]));
+  const durations: number[] = [];
+
+  consultas.forEach((consulta) => {
+    const paciente = pacientesByCedula.get(consulta.cedulaPaciente);
+    if (!paciente) {
+      return;
+    }
+
+    const registro = parseDateTime(paciente.fechaRegistro);
+    const atencion = parseDateTime(consulta.fecha);
+    if (!registro || !atencion) {
+      return;
+    }
+
+    const diffMinutes = (atencion.getTime() - registro.getTime()) / 60000;
+    if (diffMinutes < 0) {
+      return;
+    }
+
+    durations.push(diffMinutes);
+  });
+
+  if (durations.length === 0) {
+    return null;
+  }
+
+  return Math.round(durations.reduce((sum, current) => sum + current, 0) / durations.length);
 }
 
 export function RightPanel() {
@@ -65,6 +111,7 @@ export function RightPanel() {
     atendidos: 0,
     enEspera: 0,
     diagnosticos: 0,
+    tiempoPromedioMin: null as number | null,
   });
   const [currentMonth, setCurrentMonth] = useState(() => {
     const now = new Date();
@@ -74,6 +121,8 @@ export function RightPanel() {
   const [appointments, setAppointments] = useState<CalendarAppointment[]>([]);
 
   useEffect(() => {
+    let disposed = false;
+
     const loadPanelData = async () => {
       try {
         const [pacientes, cola, diagnosticos, consultas] = await Promise.all([
@@ -83,11 +132,20 @@ export function RightPanel() {
           getConsultas(),
         ]);
 
+        if (disposed) {
+          return;
+        }
+
+        const todayKey = dateToKey(new Date());
+        const consultasDeHoy = consultas.filter((consulta) => toDateKey(consulta.fecha) === todayKey);
+        const promedio = computeAverageAttentionMinutes(pacientes, consultasDeHoy);
+
         setPacientesEnEspera(cola.slice(0, 4));
         setStats({
-          atendidos: Math.max(pacientes.length - cola.length, 0),
+          atendidos: pacientes.filter((paciente) => paciente.estado === "Atendido").length,
           enEspera: cola.length,
           diagnosticos: diagnosticos.length,
+          tiempoPromedioMin: promedio,
         });
 
         const appointmentsFromApi = consultas.map((consulta) => {
@@ -114,6 +172,14 @@ export function RightPanel() {
     };
 
     void loadPanelData();
+    const interval = window.setInterval(() => {
+      void loadPanelData();
+    }, 3000);
+
+    return () => {
+      disposed = true;
+      window.clearInterval(interval);
+    };
   }, []);
 
   useEffect(() => {
@@ -312,7 +378,9 @@ export function RightPanel() {
               </div>
               <span className="text-sm text-gray-600">Tiempo promedio</span>
             </div>
-            <span className="text-lg font-bold text-gray-900">24min</span>
+            <span className="text-lg font-bold text-gray-900">
+              {stats.tiempoPromedioMin === null ? "--" : `${stats.tiempoPromedioMin}min`}
+            </span>
           </div>
         </div>
       </div>
@@ -323,9 +391,9 @@ export function RightPanel() {
         <div className="space-y-3">
           {pacientesEnEspera.map((paciente) => {
             const prioridadConfig = {
-              1: { label: "Alta", color: "bg-red-100 text-red-700" },
-              2: { label: "Media", color: "bg-yellow-100 text-yellow-700" },
-              3: { label: "Baja", color: "bg-green-100 text-green-700" },
+              1: { label: "Critico", color: "bg-red-100 text-red-700" },
+              2: { label: "Urgente", color: "bg-orange-100 text-orange-700" },
+              3: { label: "Normal", color: "bg-blue-100 text-blue-700" },
             };
 
             const config = prioridadConfig[paciente.prioridad];

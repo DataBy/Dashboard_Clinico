@@ -1,4 +1,4 @@
-import { type FormEvent, useEffect, useMemo, useRef, useState } from "react";
+import { type FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Play, UserPlus } from "lucide-react";
 import { TopBar } from "../components/TopBar";
 import { Badge } from "../components/Badge";
@@ -56,7 +56,7 @@ export function Registro() {
     }, 2000);
   };
 
-  const loadData = async () => {
+  const loadData = useCallback(async (showErrorToast = true) => {
     try {
       const [cola, diagnosticosApi, consultasApi] = await Promise.all([
         getCola(),
@@ -66,19 +66,36 @@ export function Registro() {
       setColaOrdenada(cola);
       setDiagnosticos(diagnosticosApi);
       setConsultas(consultasApi);
-
-      if (!formData.diagnostico && diagnosticosApi.length > 0) {
-        setFormData((prev) => ({ ...prev, diagnostico: diagnosticosApi[0].codigo }));
-      }
+      setFormData((prev) => {
+        if (prev.diagnostico || diagnosticosApi.length === 0) {
+          return prev;
+        }
+        return { ...prev, diagnostico: diagnosticosApi[0].codigo };
+      });
     } catch (error) {
       console.error(error);
-      showToast("No se pudo cargar la informacion del backend.", 2500);
+      if (showErrorToast) {
+        showToast("No se pudo cargar la informacion del backend.", 2500);
+      }
     }
-  };
+  }, [showToast]);
 
   useEffect(() => {
-    void loadData();
-  }, []);
+    let active = true;
+
+    void loadData(true);
+    const interval = window.setInterval(() => {
+      if (!active) {
+        return;
+      }
+      void loadData(false);
+    }, 3000);
+
+    return () => {
+      active = false;
+      window.clearInterval(interval);
+    };
+  }, [loadData]);
 
   useEffect(() => {
     return () => {
