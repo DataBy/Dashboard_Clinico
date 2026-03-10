@@ -1,23 +1,43 @@
+
 # ==========================================
 # 1. FRONTEND: Dependencies & Caches
 # ==========================================
+
+# Frontend dependencies
+frontend/node_modules/
+>>>>>>> main
 node_modules/
 .npm/
 .pnpm-store/
 .yarn/
 
+
 # ==========================================
 # 2. FRONTEND: Build outputs & Tests
 # ==========================================
+=======
+# Frontend build and tooling output
+frontend/dist/
+frontend/build/
+frontend/coverage/
+frontend/.vite/
+frontend/.cache/
+frontend/.eslintcache
+frontend/*.tsbuildinfo
+>>>>>>> main
 dist/
 build/
 out/
 .vite/
+
 *.tsbuildinfo
+=======
+
 coverage/
 .nyc_output/
 playwright-report/
 test-results/
+
 
 # ==========================================
 # 3. FRONTEND: Logs
@@ -73,7 +93,53 @@ docker/frontend/envs/.env
 # 7. IDE/editor & OS files
 # ==========================================
 .idea/
+=======
+
+# Package manager caches
+.npm/
+.pnpm-store/
+.yarn/
+
+# Environment files
+frontend/.env
+frontend/.env.*
+!frontend/.env.example
+.env
+.env.local
+.env.*.local
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# C/C++ build artifacts
+*.exe
+*.out
+*.o
+*.obj
+*.a
+*.lib
+*.dll
+*.so
+*.dylib
+*.pdb
+*.ilk
+*.idb
+*.pch
+cmake-build-*/
+CMakeFiles/
+CMakeCache.txt
+compile_commands.json
+
+# Editor and IDE files
+>>>>>>> main
 .vscode/
+.idea/
 *.suo
 *.ntvs*
 *.njsproj
