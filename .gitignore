@@ -1,0 +1,31 @@
+# Frontend dependencies
+frontend/node_modules/
+
+# Build output
+frontend/dist/
+frontend/build/
+frontend/coverage/
+
+# Tooling cache
+frontend/.vite/
+frontend/.cache/
+frontend/.eslintcache
+frontend/*.tsbuildinfo
+
+# Environment files
+frontend/.env
+frontend/.env.*
+!frontend/.env.example
+
+# Logs
+frontend/*.log
+frontend/npm-debug.log*
+frontend/yarn-debug.log*
+frontend/yarn-error.log*
+frontend/pnpm-debug.log*
+
+# Editor and OS files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
