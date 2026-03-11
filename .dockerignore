@@ -1,0 +1,12 @@
+.git
+.gitignore
+.vscode
+
+backend/
+
+**/node_modules
+**/dist
+**/build
+
+README.md
+Makefile

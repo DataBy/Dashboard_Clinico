@@ -1,16 +1,32 @@
-FROM ubuntu:22.04
-ENV DEBIAN_FRONTEND=noninteractive
+FROM debian:bookworm-slim AS builder
 
-# 1. Instalar compilador y herramientas
-RUN apt-get update && apt-get install -y \
+RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     cmake \
-    libsqlite3-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# 2. Directorio de trabajo raíz dentro del contenedor
+WORKDIR /src
+COPY . .
+
+RUN cmake -S . -B build -DCMAKE_BUILD_TYPE=Release \
+    && cmake --build build -j"$(nproc)" \
+    && strip build/clinica_api
+
+FROM debian:bookworm-slim AS runtime
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libstdc++6 \
+    && rm -rf /var/lib/apt/lists/*
+
 WORKDIR /app
 
-# 3. El comando de ejecución compila automáticamente el código 
-# que viva dentro de la carpeta "backend" mapeada por el volumen
-CMD ["bash", "-c", "cd backend && mkdir -p build && cd build && cmake .. && make && ./clinica_api"]
+COPY --from=builder /src/build/clinica_api /app/clinica_api
+COPY --from=builder /src/pacientes.csv /app/pacientes.csv
+COPY --from=builder /src/consultas.csv /app/consultas.csv
+COPY --from=builder /src/diagnosticos.csv /app/diagnosticos.csv
+
+ENV PORT=8080
+
+EXPOSE 8080
+
+CMD ["./clinica_api"]
