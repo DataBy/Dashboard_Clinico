@@ -21,7 +21,7 @@ export function ExpedientePanel({ record }: ExpedientePanelProps) {
         </div>
         <div>
           <p className="mb-1 text-xs text-gray-600">Edad</p>
-          <p className="font-medium text-gray-900">{paciente.edad} anos</p>
+          <p className="font-medium text-gray-900">{paciente.edad} años</p>
         </div>
         <div>
           <p className="mb-1 text-xs text-gray-600">Fecha de registro</p>
@@ -38,12 +38,12 @@ export function ExpedientePanel({ record }: ExpedientePanelProps) {
       </div>
 
       <div className="rounded-2xl border border-white/45 bg-white/55 p-4">
-        <p className="mb-2 text-sm font-semibold text-gray-900">Historial medico</p>
+        <p className="mb-2 text-sm font-semibold text-gray-900">Historial médico</p>
         <p className="text-sm leading-relaxed text-gray-700">{historialBasico}</p>
       </div>
 
       <div className="rounded-2xl border border-white/45 bg-white/55 p-4">
-        <p className="mb-2 text-sm font-semibold text-gray-900">Diagnosticos</p>
+        <p className="mb-2 text-sm font-semibold text-gray-900">Diagnósticos</p>
         <div className="flex flex-wrap gap-2">
           {diagnosticos.map((diagnostico) => (
             <span
@@ -53,7 +53,7 @@ export function ExpedientePanel({ record }: ExpedientePanelProps) {
               {diagnostico}
             </span>
           ))}
-          {diagnosticos.length === 0 && <span className="text-sm text-gray-500">Sin diagnosticos.</span>}
+          {diagnosticos.length === 0 && <span className="text-sm text-gray-500">Sin diagnósticos.</span>}
         </div>
       </div>
 

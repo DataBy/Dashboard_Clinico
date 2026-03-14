@@ -124,7 +124,7 @@ export function Rendimiento() {
         console.error(error);
         setSystemMetrics(null);
         setMetricsNotice(
-          "No se pudo obtener metricas del backend. Verifique que /api/system/metrics este disponible."
+          "No se pudieron obtener las métricas del backend. Verifique que /api/system/metrics esté disponible."
         );
       }
     };
@@ -226,9 +226,23 @@ export function Rendimiento() {
     searchComparison?.improvementPct ?? (1 - binariaMs / Math.max(linealMs, 0.0001)) * 100;
   const speedUp = linealMs / Math.max(binariaMs, 0.0001);
 
-  const filteredGrowthData = useMemo(() => {
-    return growthData.filter((item) => normalizeDatasetSize(item.size) === selectedSizeFilter);
-  }, [growthData, selectedSizeFilter]);
+  const orderedGrowthData = useMemo(() => {
+    return [...growthData].sort(
+      (a, b) => Number(normalizeDatasetSize(a.size)) - Number(normalizeDatasetSize(b.size))
+    );
+  }, [growthData]);
+
+  const visibleGrowthData = useMemo(() => {
+    const maxSize = Number(selectedSizeFilter);
+    const filteredByRange = orderedGrowthData.filter(
+      (item) => Number(normalizeDatasetSize(item.size)) <= maxSize
+    );
+
+    return [
+      { size: "0", bubble: 0, selection: 0, insertion: 0, quick: 0 },
+      ...filteredByRange,
+    ];
+  }, [orderedGrowthData, selectedSizeFilter]);
 
   const filteredPerformanceData = useMemo(() => {
     if (selectedAlgorithm === "all") {
@@ -287,7 +301,7 @@ export function Rendimiento() {
                 <>
                   <option value="nombre">Nombre</option>
                   <option value="edad">Edad</option>
-                  <option value="fecha">Fecha registro</option>
+                  <option value="fecha">Fecha de registro</option>
                   <option value="prioridad">Prioridad</option>
                 </>
               ) : (
@@ -301,7 +315,7 @@ export function Rendimiento() {
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-gray-700 mb-2">Tamano</label>
+            <label className="block text-xs font-medium text-gray-700 mb-2">Tamaño</label>
             <select
               value={dataSize}
               onChange={(event) => {
@@ -395,7 +409,7 @@ export function Rendimiento() {
         ) : null}
 
         {!systemMetrics ? (
-          <p className="text-sm text-gray-500">Cargando metricas...</p>
+          <p className="text-sm text-gray-500">Cargando métricas...</p>
         ) : (
           <div className="grid grid-cols-2 gap-4">
             <div className="rounded-2xl border border-gray-200 bg-gray-50 p-4">
@@ -430,7 +444,7 @@ export function Rendimiento() {
             </div>
 
             <div className="rounded-2xl border border-gray-200 bg-gray-50 p-4">
-              <p className="text-xs text-gray-500 mb-1">Nucleos CPU</p>
+              <p className="text-xs text-gray-500 mb-1">Núcleos CPU</p>
               <p className="text-lg font-semibold text-gray-900">{systemMetrics?.cpuCores ?? 0}</p>
             </div>
           </div>
@@ -489,7 +503,7 @@ export function Rendimiento() {
             </div>
 
             <ResponsiveContainer width="100%" height={300}>
-              <LineChart data={filteredGrowthData.length ? filteredGrowthData : growthData}>
+              <LineChart data={visibleGrowthData}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                 <XAxis dataKey="size" stroke="#6b7280" />
                 <YAxis stroke="#6b7280" label={{ value: "ms", angle: -90, position: "insideLeft" }} />
@@ -543,7 +557,7 @@ export function Rendimiento() {
             </div>
           </div>
 
-          {/* Busqueda sobre datos ordenados */}
+          {/* Búsqueda sobre datos ordenados */}
           <div className="bg-green-50 rounded-3xl p-6 shadow-sm">
             <div className="flex items-center gap-3 mb-4">
               <div className="w-10 h-10 rounded-xl bg-green-100 flex items-center justify-center">
@@ -553,13 +567,13 @@ export function Rendimiento() {
             </div>
 
             <p className="text-sm text-gray-700 mb-6">
-              Comparacion de busquedas sobre datos ordenados con Quick Sort
+              Comparación de búsquedas sobre datos ordenados con Quick Sort
             </p>
 
             <div className="space-y-4">
               <div className="bg-white/60 rounded-xl p-4">
                 <div className="flex justify-between mb-2">
-                  <span className="text-sm text-gray-700">Busqueda Lineal</span>
+                  <span className="text-sm text-gray-700">Búsqueda Lineal</span>
                   <span className="font-semibold text-gray-900">{linealMs.toFixed(2)} ms</span>
                 </div>
                 <div className="h-2 bg-white rounded-full overflow-hidden">
@@ -569,7 +583,7 @@ export function Rendimiento() {
 
               <div className="bg-white/60 rounded-xl p-4">
                 <div className="flex justify-between mb-2">
-                  <span className="text-sm text-gray-700">Busqueda Binaria</span>
+                  <span className="text-sm text-gray-700">Búsqueda Binaria</span>
                   <span className="font-semibold text-gray-900">{binariaMs.toFixed(2)} ms</span>
                 </div>
                 <div className="h-2 bg-white rounded-full overflow-hidden">
@@ -579,9 +593,9 @@ export function Rendimiento() {
             </div>
 
             <div className="mt-6 p-4 bg-green-100 rounded-xl">
-              <p className="text-sm font-medium text-green-900 mb-1">Conclusion</p>
+              <p className="text-sm font-medium text-green-900 mb-1">Conclusión</p>
               <p className="text-xs text-green-800">
-                La busqueda binaria es <strong>{speedUp.toFixed(1)}x mas rapida</strong> en datasets ordenados ({improvement.toFixed(1)}% de mejora)
+                La búsqueda binaria es <strong>{speedUp.toFixed(1)}x más rápida</strong> en datasets ordenados ({improvement.toFixed(1)}% de mejora)
               </p>
             </div>
           </div>
@@ -592,7 +606,7 @@ export function Rendimiento() {
         <div className="bg-white rounded-3xl p-12 shadow-sm">
           <div className="text-center text-gray-400">
             <BarChart3 className="w-16 h-16 mx-auto mb-4 opacity-50" />
-            <p className="text-lg">Configure los parametros y ejecute el experimento</p>
+            <p className="text-lg">Configure los parámetros y ejecute el experimento</p>
           </div>
         </div>
       )}

@@ -39,7 +39,7 @@ export function Sidebar({ currentPage, onNavigate }: SidebarProps) {
     <div className="w-48 h-full bg-[#5b4ccc] text-white flex flex-col">
       {/* Logo */}
       <div className="px-6 py-8">
-        <h1 className="text-2xl font-semibold">ēClinica</h1>
+        <h1 className="text-2xl font-semibold">eClínica</h1>
       </div>
 
       {/* Navigation */}

@@ -75,7 +75,7 @@ export function Registro() {
     } catch (error) {
       console.error(error);
       if (showErrorToast) {
-        showToast("No se pudo cargar la informacion del backend.", 2500);
+        showToast("No se pudo cargar la información del backend.", 2500);
       }
     }
   }, [showToast]);
@@ -205,7 +205,7 @@ export function Registro() {
 
         <form onSubmit={handleSubmit} className="grid grid-cols-3 gap-6">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Cedula</label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Cédula</label>
             <input
               type="text"
               placeholder="001-0000000-0"
@@ -244,7 +244,7 @@ export function Registro() {
               onChange={(event) => setFormData({ ...formData, prioridad: event.target.value })}
               className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-purple-500"
             >
-              <option value="1">1 - Critico</option>
+              <option value="1">1 - Crítico</option>
               <option value="2">2 - Urgente</option>
               <option value="3">3 - Normal</option>
             </select>
@@ -266,7 +266,7 @@ export function Registro() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Diagnostico asignado</label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Diagnóstico asignado</label>
             <select
               value={formData.diagnostico}
               onChange={(event) => setFormData({ ...formData, diagnostico: event.target.value })}
@@ -311,10 +311,10 @@ export function Registro() {
             <thead>
               <tr className="border-b border-gray-200">
                 <th className="text-left py-3 px-4 text-sm font-medium text-gray-700">Prioridad</th>
-                <th className="text-left py-3 px-4 text-sm font-medium text-gray-700">Cedula</th>
+                <th className="text-left py-3 px-4 text-sm font-medium text-gray-700">Cédula</th>
                 <th className="text-left py-3 px-4 text-sm font-medium text-gray-700">Nombre</th>
                 <th className="text-left py-3 px-4 text-sm font-medium text-gray-700">Edad</th>
-                <th className="text-left py-3 px-4 text-sm font-medium text-gray-700">Diagnostico</th>
+                <th className="text-left py-3 px-4 text-sm font-medium text-gray-700">Diagnóstico</th>
                 <th className="text-left py-3 px-4 text-sm font-medium text-gray-700">Registro</th>
                 <th className="text-left py-3 px-4 text-sm font-medium text-gray-700">Acciones</th>
               </tr>

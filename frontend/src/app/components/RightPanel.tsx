@@ -268,7 +268,7 @@ export function RightPanel() {
         </div>
 
         <div className="grid grid-cols-7 gap-1 text-center">
-          {["Lun", "Mar", "Mie", "Jue", "Vie", "Sab", "Dom"].map((day, index) => (
+          {["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"].map((day, index) => (
             <div key={index} className="text-xs text-gray-400 font-medium py-2">
               {day}
             </div>
@@ -331,7 +331,7 @@ export function RightPanel() {
                 </div>
               ))
             ) : (
-              <p className="py-2 text-center text-xs text-gray-400">Sin anotaciones para este dia</p>
+              <p className="py-2 text-center text-xs text-gray-400">Sin anotaciones para este día</p>
             )}
           </div>
         </div>
@@ -366,7 +366,7 @@ export function RightPanel() {
               <div className="w-8 h-8 rounded-xl bg-blue-100 flex items-center justify-center">
                 <Stethoscope className="w-4 h-4 text-blue-600" />
               </div>
-              <span className="text-sm text-gray-600">Diagnosticos registrados</span>
+              <span className="text-sm text-gray-600">Diagnósticos registrados</span>
             </div>
             <span className="text-lg font-bold text-gray-900">{stats.diagnosticos}</span>
           </div>
@@ -379,7 +379,7 @@ export function RightPanel() {
               <span className="text-sm text-gray-600">Tiempo promedio</span>
             </div>
             <span className="text-lg font-bold text-gray-900">
-              {stats.tiempoPromedioMin === null ? "--" : `${stats.tiempoPromedioMin}min`}
+              {stats.tiempoPromedioMin === null ? "--" : `${stats.tiempoPromedioMin} min`}
             </span>
           </div>
         </div>
@@ -391,7 +391,7 @@ export function RightPanel() {
         <div className="space-y-3">
           {pacientesEnEspera.map((paciente) => {
             const prioridadConfig = {
-              1: { label: "Critico", color: "bg-red-100 text-red-700" },
+              1: { label: "Crítico", color: "bg-red-100 text-red-700" },
               2: { label: "Urgente", color: "bg-orange-100 text-orange-700" },
               3: { label: "Normal", color: "bg-blue-100 text-blue-700" },
             };

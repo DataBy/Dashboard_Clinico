@@ -35,11 +35,11 @@ function sortConsultasDesc(consultas: ApiConsulta[]) {
 
 function buildHistorialBasico(paciente: ApiPaciente, consultas: ApiConsulta[]) {
   if (consultas.length === 0) {
-    return `Paciente sin consultas registradas. Diagnostico asignado inicial: ${paciente.diagnosticoAsignado}.`;
+    return `Paciente sin consultas registradas. Diagnóstico asignado inicial: ${paciente.diagnosticoAsignado}.`;
   }
 
   const latest = consultas[0];
-  return `Paciente con ${consultas.length} consulta(s) registrada(s). Ultima atencion: ${latest.fecha} con diagnostico "${latest.diagnostico}".`;
+  return `Paciente con ${consultas.length} consulta(s) registrada(s). Última atención: ${latest.fecha} con diagnóstico "${latest.diagnostico}".`;
 }
 
 export function buildExpedienteRecord(

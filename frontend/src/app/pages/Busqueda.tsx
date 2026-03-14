@@ -60,7 +60,7 @@ export function Busqueda() {
   const handleSearch = async () => {
     const term = searchTerm.trim();
     if (!term) {
-      showToast("Ingrese un termino de busqueda.", 2300);
+      showToast("Ingrese un término de búsqueda.", 2300);
       return;
     }
 
@@ -95,10 +95,10 @@ export function Busqueda() {
 
       const usedAlgorithm =
         respuesta.algoritmo === "binaria"
-          ? "Busqueda Binaria"
+          ? "Búsqueda Binaria"
           : respuesta.algoritmo === "ambos"
             ? "Comparativa Lineal/Binaria"
-            : "Busqueda Lineal";
+            : "Búsqueda Lineal";
 
       setSummary({
         term: respuesta.termino || term,
@@ -121,45 +121,45 @@ export function Busqueda() {
       );
     } catch (error) {
       console.error(error);
-      showToast(error instanceof Error ? error.message : "No se pudo ejecutar la busqueda.", 2600);
+      showToast(error instanceof Error ? error.message : "No se pudo ejecutar la búsqueda.", 2600);
     } finally {
       setIsSearching(false);
     }
   };
 
   const porcentajeMejora = performanceData
-    ? (1 - performanceData.binaria / Math.max(performanceData.lineal, 0.0001)) * 100
+    ? Math.abs((1 - performanceData.binaria / Math.max(performanceData.lineal, 0.0001)) * 100)
     : 0;
 
   const historialRender = history.length
-    ? history
-    : [
-        { size: "5,000", time: "85.3 ms", type: "Busqueda Lineal" },
-        { size: "50,000", time: "742.1 ms", type: "Busqueda Lineal" },
-        { size: "5,000", time: "12.4 ms", type: "Busqueda Binaria" },
+      ? history
+      : [
+        { size: "5,000", time: "85.3 ms", type: "Búsqueda Lineal" },
+        { size: "50,000", time: "742.1 ms", type: "Búsqueda Lineal" },
+        { size: "5,000", time: "12.4 ms", type: "Búsqueda Binaria" },
       ];
 
   return (
     <div className="p-8 bg-gray-50">
-      <TopBar title="Busqueda Comparativa" showFilters={false} />
+      <TopBar title="Búsqueda Comparativa" showFilters={false} />
 
       {/* Filters */}
       <div className="bg-white rounded-3xl p-6 shadow-sm mb-6">
         <div className="grid grid-cols-5 gap-4 mb-4">
           <div>
-            <label className="block text-xs font-medium text-gray-700 mb-2">Tipo de busqueda</label>
+            <label className="block text-xs font-medium text-gray-700 mb-2">Tipo de búsqueda</label>
             <select
               value={searchType}
               onChange={(event) => setSearchType(event.target.value)}
               className="w-full px-4 py-2 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
             >
-              <option value="cedula">Cedula exacta</option>
+              <option value="cedula">Cédula exacta</option>
               <option value="nombre">Nombre parcial</option>
             </select>
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-gray-700 mb-2">Termino</label>
+            <label className="block text-xs font-medium text-gray-700 mb-2">Término</label>
             <input
               type="text"
               value={searchTerm}
@@ -176,7 +176,7 @@ export function Busqueda() {
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-gray-700 mb-2">Tamano del dataset</label>
+            <label className="block text-xs font-medium text-gray-700 mb-2">Tamaño del dataset</label>
             <select
               value={datasetSize}
               onChange={(event) => setDatasetSize(event.target.value)}
@@ -197,8 +197,8 @@ export function Busqueda() {
               disabled={searchType !== "cedula"}
               className="w-full px-4 py-2 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:bg-gray-100 disabled:text-gray-500"
             >
-              <option value="lineal">Busqueda Lineal</option>
-              <option value="binaria">Busqueda Binaria</option>
+              <option value="lineal">Búsqueda Lineal</option>
+              <option value="binaria">Búsqueda Binaria</option>
               <option value="ambos">Comparar Ambos</option>
             </select>
           </div>
@@ -217,7 +217,7 @@ export function Busqueda() {
               ) : (
                 <>
                   <Search className="w-4 h-4" />
-                  Ejecutar busqueda
+                  Ejecutar búsqueda
                 </>
               )}
             </button>
@@ -233,7 +233,7 @@ export function Busqueda() {
           {summary && (
             <div className="mb-4 grid grid-cols-2 gap-3 rounded-2xl border border-gray-200 bg-gray-50 p-3 text-xs">
               <div>
-                <p className="text-gray-500">Termino buscado</p>
+                <p className="text-gray-500">Término buscado</p>
                 <p className="font-medium text-gray-900">{summary.term}</p>
               </div>
               <div>
@@ -241,7 +241,7 @@ export function Busqueda() {
                 <p className="font-medium text-gray-900">{summary.algorithm}</p>
               </div>
               <div>
-                <p className="text-gray-500">Tiempo de ejecucion</p>
+                <p className="text-gray-500">Tiempo de ejecución</p>
                 <p className="font-medium text-gray-900">{summary.executionMs.toFixed(3)} ms</p>
               </div>
               <div>
@@ -266,7 +266,7 @@ export function Busqueda() {
                       <p className="text-sm text-gray-600">{paciente.cedula}</p>
                     </div>
                     <span className="text-xs bg-purple-100 text-purple-700 px-2 py-1 rounded-full">
-                      {paciente.edad} anos
+                      {paciente.edad} años
                     </span>
                   </div>
                 </div>
@@ -294,7 +294,7 @@ export function Busqueda() {
                 <div className="space-y-4">
                   <div>
                     <div className="flex justify-between mb-2">
-                      <span className="text-sm text-gray-700">Busqueda Lineal</span>
+                      <span className="text-sm text-gray-700">Búsqueda Lineal</span>
                       <span className="text-sm font-semibold text-gray-900">
                         {performanceData.lineal.toFixed(2)} ms
                       </span>
@@ -311,7 +311,7 @@ export function Busqueda() {
 
                   <div>
                     <div className="flex justify-between mb-2">
-                      <span className="text-sm text-gray-700">Busqueda Binaria</span>
+                      <span className="text-sm text-gray-700">Búsqueda Binaria</span>
                       <span className="text-sm font-semibold text-gray-900">
                         {performanceData.binaria.toFixed(2)} ms
                       </span>
@@ -332,18 +332,18 @@ export function Busqueda() {
                     <TrendingDown className="w-4 h-4 text-green-600" />
                     <span className="text-sm font-medium text-gray-900">Mejora de rendimiento</span>
                   </div>
-                  <p className="text-2xl font-bold text-green-700">{porcentajeMejora.toFixed(1)}% mas rapido</p>
+                  <p className="text-2xl font-bold text-green-700">{porcentajeMejora.toFixed(1)}% más rápido</p>
                 </div>
               </div>
 
               <div className="bg-white rounded-3xl p-6 shadow-sm">
-                <h3 className="font-semibold text-gray-900 mb-3">Mejor metodo</h3>
+                <h3 className="font-semibold text-gray-900 mb-3">Mejor método</h3>
                 <div className="flex items-center gap-3 p-4 bg-gradient-to-r from-green-100 to-emerald-100 rounded-xl border border-green-200">
                   <div className="w-10 h-10 rounded-full bg-green-500 flex items-center justify-center">
                     <Zap className="w-5 h-5 text-white" />
                   </div>
                   <div>
-                    <p className="font-medium text-gray-900">Busqueda Binaria</p>
+                    <p className="font-medium text-gray-900">Búsqueda Binaria</p>
                     <p className="text-xs text-gray-600">Recomendado para datasets grandes</p>
                   </div>
                 </div>

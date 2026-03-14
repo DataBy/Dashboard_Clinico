@@ -37,7 +37,7 @@ export function Consultar() {
         setSelectedPaciente((prev) => prev ?? lastPaciente ?? pacientesApi[0] ?? null);
       } catch (error) {
         console.error(error);
-        showToast("No se pudo cargar la informacion del backend.", 2500);
+        showToast("No se pudo cargar la información del backend.", 2500);
       }
     };
 
@@ -101,7 +101,7 @@ export function Consultar() {
 
   return (
     <div className="p-8 bg-gray-50">
-      <TopBar title="Consultar Informacion" showFilters={false} />
+      <TopBar title="Consultar Información" showFilters={false} />
 
       {/* Search bar */}
       <div className="mb-8">
@@ -110,7 +110,7 @@ export function Consultar() {
             <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
             <input
               type="text"
-              placeholder="Buscar por cedula o nombre..."
+              placeholder="Buscar por cédula o nombre..."
               value={searchInput}
               onChange={(event) => setSearchInput(event.target.value)}
               onKeyDown={(event) => {
@@ -157,12 +157,12 @@ export function Consultar() {
                   <p className="font-medium text-gray-900">{selectedPaciente.nombre}</p>
                 </div>
                 <div>
-                  <p className="text-xs text-gray-500 mb-1">Cedula</p>
+                  <p className="text-xs text-gray-500 mb-1">Cédula</p>
                   <p className="font-medium text-gray-900">{selectedPaciente.cedula}</p>
                 </div>
                 <div>
                   <p className="text-xs text-gray-500 mb-1">Edad</p>
-                  <p className="font-medium text-gray-900">{selectedPaciente.edad} anos</p>
+                  <p className="font-medium text-gray-900">{selectedPaciente.edad} años</p>
                 </div>
                 <div>
                   <p className="text-xs text-gray-500 mb-1">Tipo de sangre</p>
@@ -179,7 +179,7 @@ export function Consultar() {
               </div>
 
               <div className="pt-4 border-t border-gray-200">
-                <p className="text-xs text-gray-500 mb-1">Diagnostico asignado</p>
+                <p className="text-xs text-gray-500 mb-1">Diagnóstico asignado</p>
                 <p className="font-medium text-gray-900">{selectedPaciente.diagnosticoAsignado}</p>
               </div>
 
@@ -195,7 +195,7 @@ export function Consultar() {
           )}
         </div>
 
-        {/* Ultima consulta */}
+        {/* Última consulta */}
         <div className="space-y-6">
           {ultimaConsulta && (
             <div className="bg-blue-50 rounded-3xl p-8 shadow-sm">
@@ -203,12 +203,12 @@ export function Consultar() {
                 <div className="w-12 h-12 rounded-2xl bg-blue-100 flex items-center justify-center">
                   <FileText className="w-6 h-6 text-blue-600" />
                 </div>
-                <h2 className="text-xl font-semibold text-gray-900">Ultima Consulta</h2>
+                <h2 className="text-xl font-semibold text-gray-900">Última Consulta</h2>
               </div>
 
               <div className="space-y-4">
                 <div>
-                  <p className="text-xs text-gray-600 mb-1">ID Consulta</p>
+                  <p className="text-xs text-gray-600 mb-1">ID de consulta</p>
                   <p className="font-medium text-gray-900">{ultimaConsulta.idConsulta || ultimaConsulta.id}</p>
                 </div>
 
@@ -218,12 +218,12 @@ export function Consultar() {
                 </div>
 
                 <div>
-                  <p className="text-xs text-gray-600 mb-1">Medico tratante</p>
+                  <p className="text-xs text-gray-600 mb-1">Médico tratante</p>
                   <p className="font-medium text-gray-900">{ultimaConsulta.medicoTratante}</p>
                 </div>
 
                 <div>
-                  <p className="text-xs text-gray-600 mb-1">Diagnostico</p>
+                  <p className="text-xs text-gray-600 mb-1">Diagnóstico</p>
                   <p className="font-medium text-gray-900">{ultimaConsulta.diagnostico}</p>
                 </div>
 
@@ -278,7 +278,7 @@ export function Consultar() {
 
           {quickList.length === 0 && (
             <div className="col-span-4 py-6 text-center text-sm text-gray-400">
-              No hay pacientes para el termino buscado.
+              No hay pacientes para el término buscado.
             </div>
           )}
         </div>

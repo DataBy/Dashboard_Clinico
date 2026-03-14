@@ -3,7 +3,7 @@ import App from "./app/App.tsx";
 import { GlassToastProvider } from "./app/components/GlassToast";
 import "./styles/index.css";
 
-document.title = "eClinica";
+document.title = "eClínica";
 
 createRoot(document.getElementById("root")!).render(
   <GlassToastProvider>
