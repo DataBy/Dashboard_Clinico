@@ -5,6 +5,7 @@ import { Badge } from "../components/Badge";
 import { GlassModal } from "../components/GlassModal";
 import { ExpedientePanel } from "../components/ExpedientePanel";
 import { useGlassToast } from "../components/GlassToast";
+import { useDebouncedValue } from "../hooks/useDebouncedValue";
 import {
   createConsulta,
   type ApiConsulta,
@@ -84,6 +85,7 @@ export function Expedientes() {
   const [consultaPacienteSearch, setConsultaPacienteSearch] = useState("");
   const [consultaForm, setConsultaForm] = useState<NuevaConsultaFormState>(INITIAL_CONSULTA_FORM);
   const { showToast } = useGlassToast();
+  const debouncedSearchInput = useDebouncedValue(searchInput, 280);
 
   const loadData = useCallback(
     async (showErrorToast = true) => {
@@ -119,6 +121,10 @@ export function Expedientes() {
   useEffect(() => {
     void loadData(true);
   }, [loadData]);
+
+  useEffect(() => {
+    setSearchTerm(debouncedSearchInput.trim());
+  }, [debouncedSearchInput]);
 
   const pacientesByCedula = useMemo(() => {
     return new Map(pacientes.map((paciente) => [paciente.cedula, paciente]));

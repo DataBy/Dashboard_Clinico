@@ -20,7 +20,7 @@ struct NameSearchResult {
 };
 
 CedulaSearchResult linearSearchByCedula(const std::vector<Paciente>& pacientes, const std::string& cedula);
-CedulaSearchResult binarySearchByCedula(std::vector<Paciente> pacientes, const std::string& cedula);
+CedulaSearchResult binarySearchByCedula(const std::vector<Paciente>& pacientesOrdenados, const std::string& cedula);
 NameSearchResult linearSearchByNombre(
     const std::vector<Paciente>& pacientes,
     const std::string& term,

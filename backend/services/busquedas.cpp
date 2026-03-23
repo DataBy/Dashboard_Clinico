@@ -19,6 +19,16 @@ std::string toLower(const std::string& value) {
     return lowered;
 }
 
+std::vector<Paciente> sortPacientesByCedula(const std::vector<Paciente>& pacientes) {
+    std::vector<Paciente> sorted = pacientes;
+    std::sort(
+        sorted.begin(),
+        sorted.end(),
+        [](const Paciente& a, const Paciente& b) { return a.cedula < b.cedula; }
+    );
+    return sorted;
+}
+
 }  // namespace
 
 BusquedaRespuesta buscarPacientes(
@@ -36,8 +46,9 @@ BusquedaRespuesta buscarPacientes(
         response.criterio = "cedula";
         response.termino = cedula;
 
+        const auto pacientesOrdenados = sortPacientesByCedula(pacientes);
         const auto lineal = searching::linearSearchByCedula(pacientes, cedula);
-        const auto binaria = searching::binarySearchByCedula(pacientes, cedula);
+        const auto binaria = searching::binarySearchByCedula(pacientesOrdenados, cedula);
         response.tiempoLinealMs = lineal.elapsedMs;
         response.tiempoBinariaMs = binaria.elapsedMs;
 
@@ -45,14 +56,9 @@ BusquedaRespuesta buscarPacientes(
         if (algo == "binaria") {
             response.algoritmo = "binaria";
             if (binaria.index != -1) {
-                auto match = std::find_if(
-                    pacientes.begin(),
-                    pacientes.end(),
-                    [&cedula](const Paciente& paciente) { return paciente.cedula == cedula; }
+                response.resultados.push_back(
+                    pacientesOrdenados[static_cast<std::size_t>(binaria.index)]
                 );
-                if (match != pacientes.end()) {
-                    response.resultados.push_back(*match);
-                }
             }
             return response;
         }

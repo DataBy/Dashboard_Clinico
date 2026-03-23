@@ -5,6 +5,7 @@ import { Badge } from "../components/Badge";
 import { GlassModal } from "../components/GlassModal";
 import { ExpedientePanel } from "../components/ExpedientePanel";
 import { useGlassToast } from "../components/GlassToast";
+import { useDebouncedValue } from "../hooks/useDebouncedValue";
 import { type ApiConsulta, type ApiPaciente, getConsultas, getPacientes } from "../../lib/api";
 import {
   buildExpedienteRecord,
@@ -21,6 +22,7 @@ export function Consultar() {
   const [selectedPaciente, setSelectedPaciente] = useState<ApiPaciente | null>(null);
   const [selectedExpediente, setSelectedExpediente] = useState<ExpedienteRecord | null>(null);
   const { showToast } = useGlassToast();
+  const debouncedSearchInput = useDebouncedValue(searchInput, 280);
 
   useEffect(() => {
     const loadData = async () => {
@@ -43,6 +45,10 @@ export function Consultar() {
 
     void loadData();
   }, []);
+
+  useEffect(() => {
+    setAppliedSearchTerm(debouncedSearchInput.trim());
+  }, [debouncedSearchInput]);
 
   const pacientesFiltrados = useMemo(() => {
     const term = appliedSearchTerm.trim().toLowerCase();
@@ -103,7 +109,6 @@ export function Consultar() {
     <div className="p-8 bg-gray-50">
       <TopBar title="Consultar Información" showFilters={false} />
 
-      {/* Search bar */}
       <div className="mb-8">
         <div className="max-w-2xl flex items-center gap-3">
           <div className="relative flex-1">
@@ -134,7 +139,6 @@ export function Consultar() {
       </div>
 
       <div className="grid grid-cols-2 gap-6">
-        {/* Ficha del paciente */}
         <div className="bg-white rounded-3xl p-8 shadow-sm">
           <div className="flex items-center gap-3 mb-6">
             <div className="w-12 h-12 rounded-2xl bg-purple-100 flex items-center justify-center">
@@ -195,7 +199,6 @@ export function Consultar() {
           )}
         </div>
 
-        {/* Última consulta */}
         <div className="space-y-6">
           {ultimaConsulta && (
             <div className="bg-blue-50 rounded-3xl p-8 shadow-sm">
@@ -250,7 +253,6 @@ export function Consultar() {
         </div>
       </div>
 
-      {/* Quick search results */}
       <div className="mt-8 bg-white rounded-3xl p-8 shadow-sm">
         <h3 className="font-semibold text-gray-900 mb-4">Seleccionar paciente</h3>
         <div className="grid grid-cols-4 gap-4">

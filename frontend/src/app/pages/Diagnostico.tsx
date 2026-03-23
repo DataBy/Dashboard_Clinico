@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { ChevronDown, ChevronRight, Search, Stethoscope } from "lucide-react";
 import { TopBar } from "../components/TopBar";
 import { GlassModal } from "../components/GlassModal";
+import { useDebouncedValue } from "../hooks/useDebouncedValue";
 import {
   type ApiDiagnostico,
   type ApiDiagnosticoTreeNode,
@@ -39,6 +40,7 @@ export function Diagnostico() {
   const [expandedEspecialidad, setExpandedEspecialidad] = useState<string | null>(null);
   const [selectedDiagnostico, setSelectedDiagnostico] = useState<ApiDiagnostico | null>(null);
   const [showCategoriaModal, setShowCategoriaModal] = useState(false);
+  const debouncedSearchInput = useDebouncedValue(searchInput, 280);
 
   useEffect(() => {
     const loadTree = async () => {
@@ -60,6 +62,10 @@ export function Diagnostico() {
 
     void loadTree();
   }, []);
+
+  useEffect(() => {
+    setSearchTerm(debouncedSearchInput.trim());
+  }, [debouncedSearchInput]);
 
   const filteredTree = useMemo(() => {
     const term = searchTerm.trim().toLowerCase();
@@ -110,6 +116,15 @@ export function Diagnostico() {
     }
   }, [filteredTree, selectedDiagnostico]);
 
+  useEffect(() => {
+    if (!searchTerm.trim() || filteredTree.length === 0) {
+      return;
+    }
+
+    setExpandedArea(filteredTree[0]?.area ?? null);
+    setExpandedEspecialidad(filteredTree[0]?.especialidades[0]?.nombre ?? null);
+  }, [filteredTree, searchTerm]);
+
   const categoriaDiagnosticos = useMemo(() => {
     if (!selectedDiagnostico) {
       return [];
@@ -128,7 +143,6 @@ export function Diagnostico() {
     <div className="p-8 bg-gray-50">
       <TopBar title="Diagnóstico" showFilters={false} />
 
-      {/* Search bar */}
       <div className="mb-6">
         <div className="max-w-2xl flex items-center gap-3">
           <div className="relative flex-1">
@@ -136,15 +150,11 @@ export function Diagnostico() {
             <input
               type="text"
               value={searchInput}
-              onChange={(event) => {
-                const value = event.target.value;
-                setSearchInput(value);
-                setSearchTerm(value);
-              }}
+              onChange={(event) => setSearchInput(event.target.value)}
               onKeyDown={(event) => {
                 if (event.key === "Enter") {
                   event.preventDefault();
-                  setSearchTerm(searchInput);
+                  setSearchTerm(searchInput.trim());
                 }
               }}
               placeholder="Buscar por código o nombre de diagnóstico..."
@@ -153,7 +163,7 @@ export function Diagnostico() {
           </div>
           <button
             type="button"
-            onClick={() => setSearchTerm(searchInput)}
+            onClick={() => setSearchTerm(searchInput.trim())}
             className="px-5 py-3 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-2xl hover:shadow-lg transition-all"
           >
             Buscar
@@ -162,7 +172,6 @@ export function Diagnostico() {
       </div>
 
       <div className="grid grid-cols-2 gap-6">
-        {/* Árbol jerárquico */}
         <div className="bg-white rounded-3xl p-6 shadow-sm h-[600px] overflow-y-auto">
           <h2 className="text-lg font-semibold text-gray-900 mb-4">Árbol de Diagnósticos</h2>
 
@@ -235,7 +244,6 @@ export function Diagnostico() {
           </div>
         </div>
 
-        {/* Detalle del diagnóstico */}
         <div className="bg-purple-50 rounded-3xl p-8 shadow-sm h-[600px] overflow-y-auto">
           {selectedDiagnostico ? (
             <>

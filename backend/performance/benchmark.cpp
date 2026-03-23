@@ -1,6 +1,7 @@
 #include "benchmark.h"
 
 #include <algorithm>
+#include <chrono>
 #include <cctype>
 #include <cmath>
 #include <cstddef>
@@ -15,6 +16,8 @@ namespace {
 
 constexpr std::size_t kDefaultSize = 5000;
 constexpr std::size_t kSortSampleCap = 4000;
+constexpr std::size_t kSearchSampleCap = 32;
+constexpr std::size_t kSearchWorkTarget = 20000000;
 
 std::size_t normalizeSize(std::size_t size) {
     return size == 0 ? kDefaultSize : size;
@@ -52,6 +55,137 @@ std::vector<T> expandDataset(const std::vector<T>& base, std::size_t size) {
         expanded.push_back(base[i % base.size()]);
     }
     return expanded;
+}
+
+std::vector<Paciente> sortPacientesByCedula(const std::vector<Paciente>& pacientes) {
+    std::vector<Paciente> sorted = pacientes;
+    std::sort(
+        sorted.begin(),
+        sorted.end(),
+        [](const Paciente& a, const Paciente& b) { return a.cedula < b.cedula; }
+    );
+    return sorted;
+}
+
+int linearSearchIndexByCedula(const std::vector<Paciente>& pacientes, const std::string& cedula) {
+    for (std::size_t i = 0; i < pacientes.size(); ++i) {
+        if (pacientes[i].cedula == cedula) {
+            return static_cast<int>(i);
+        }
+    }
+
+    return -1;
+}
+
+int binarySearchIndexByCedula(const std::vector<Paciente>& pacientesOrdenados, const std::string& cedula) {
+    int left = 0;
+    int right = static_cast<int>(pacientesOrdenados.size()) - 1;
+
+    while (left <= right) {
+        const int middle = left + (right - left) / 2;
+        const auto& candidate = pacientesOrdenados[static_cast<std::size_t>(middle)].cedula;
+
+        if (candidate == cedula) {
+            return middle;
+        }
+        if (candidate < cedula) {
+            left = middle + 1;
+        } else {
+            right = middle - 1;
+        }
+    }
+
+    return -1;
+}
+
+std::vector<std::string> buildCedulaSearchTargets(
+    const std::vector<Paciente>& pacientes,
+    const std::string& cedula
+) {
+    if (!cedula.empty()) {
+        return {cedula};
+    }
+
+    if (pacientes.empty()) {
+        return {};
+    }
+
+    const std::size_t sampleCount = std::min(kSearchSampleCap, pacientes.size());
+    std::vector<std::string> targets;
+    targets.reserve(sampleCount);
+
+    for (std::size_t i = 0; i < sampleCount; ++i) {
+        const std::size_t index =
+            sampleCount == 1
+                ? pacientes.size() / 2
+                : (i * (pacientes.size() - 1)) / (sampleCount - 1);
+        targets.push_back(pacientes[index].cedula);
+    }
+
+    return targets;
+}
+
+std::size_t resolveSearchRepetitions(std::size_t datasetSize, std::size_t sampleCount) {
+    if (datasetSize == 0 || sampleCount == 0) {
+        return 1;
+    }
+
+    const std::size_t workPerRepetition = datasetSize * sampleCount;
+    const std::size_t estimated = kSearchWorkTarget / std::max<std::size_t>(1, workPerRepetition);
+    return std::clamp<std::size_t>(estimated, 5, 200);
+}
+
+struct CedulaSearchBenchmarkResult {
+    double linealMs;
+    double binariaMs;
+    bool found;
+};
+
+CedulaSearchBenchmarkResult benchmarkCedulaComparison(
+    const std::vector<Paciente>& pacientes,
+    const std::vector<Paciente>& pacientesOrdenados,
+    const std::vector<std::string>& targets
+) {
+    if (pacientes.empty() || pacientesOrdenados.empty() || targets.empty()) {
+        return {0.0, 0.0, false};
+    }
+
+    const std::size_t repetitions = resolveSearchRepetitions(pacientes.size(), targets.size());
+    const double divisor = static_cast<double>(repetitions * targets.size());
+    bool found = false;
+
+    volatile int linearGuard = 0;
+    const auto linearStart = std::chrono::high_resolution_clock::now();
+    for (std::size_t repetition = 0; repetition < repetitions; ++repetition) {
+        for (const auto& target : targets) {
+            const int index = linearSearchIndexByCedula(pacientes, target);
+            if (index != -1) {
+                found = true;
+            }
+            linearGuard ^= index;
+        }
+    }
+    const auto linearEnd = std::chrono::high_resolution_clock::now();
+
+    volatile int binaryGuard = linearGuard;
+    const auto binaryStart = std::chrono::high_resolution_clock::now();
+    for (std::size_t repetition = 0; repetition < repetitions; ++repetition) {
+        for (const auto& target : targets) {
+            const int index = binarySearchIndexByCedula(pacientesOrdenados, target);
+            binaryGuard ^= index;
+        }
+    }
+    const auto binaryEnd = std::chrono::high_resolution_clock::now();
+
+    const auto linearElapsed =
+        std::chrono::duration<double, std::milli>(linearEnd - linearStart).count() / divisor;
+    const auto binaryElapsed =
+        std::chrono::duration<double, std::milli>(binaryEnd - binaryStart).count() / divisor;
+
+    (void)linearGuard;
+    (void)binaryGuard;
+
+    return {linearElapsed, binaryElapsed, found};
 }
 
 std::vector<double> extractPacienteValues(const std::vector<Paciente>& pacientes, const std::string& campo) {
@@ -270,24 +404,24 @@ nlohmann::json benchmarkBusquedaPacientes(
         };
     }
 
+    const auto pacientesOrdenados = sortPacientesByCedula(expanded);
+    const auto targets = buildCedulaSearchTargets(expanded, cedula);
     const std::string targetCedula =
-        cedula.empty() ? expanded[expanded.size() / 2].cedula : cedula;
-
-    const auto lineal = searching::linearSearchByCedula(expanded, targetCedula);
-    const auto binaria = searching::binarySearchByCedula(expanded, targetCedula);
+        targets.empty() ? "" : (cedula.empty() ? targets[targets.size() / 2] : targets[0]);
+    const auto comparison = benchmarkCedulaComparison(expanded, pacientesOrdenados, targets);
 
     double improvementPct = 0.0;
-    if (lineal.elapsedMs > 0.0) {
-        improvementPct = (1.0 - (binaria.elapsedMs / lineal.elapsedMs)) * 100.0;
+    if (comparison.linealMs > 0.0) {
+        improvementPct = (1.0 - (comparison.binariaMs / comparison.linealMs)) * 100.0;
     }
 
     return {
         {"size", normalizeSize(size)},
         {"cedula", targetCedula},
-        {"linealMs", lineal.elapsedMs},
-        {"binariaMs", binaria.elapsedMs},
+        {"linealMs", comparison.linealMs},
+        {"binariaMs", comparison.binariaMs},
         {"improvementPct", improvementPct},
-        {"found", lineal.index != -1},
+        {"found", comparison.found},
     };
 }
 

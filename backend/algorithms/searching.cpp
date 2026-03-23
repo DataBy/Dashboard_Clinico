@@ -18,49 +18,54 @@ std::string toLower(const std::string& value) {
     return lowered;
 }
 
+int linearSearchIndexByCedula(const std::vector<Paciente>& pacientes, const std::string& cedula) {
+    for (std::size_t i = 0; i < pacientes.size(); ++i) {
+        if (pacientes[i].cedula == cedula) {
+            return static_cast<int>(i);
+        }
+    }
+
+    return -1;
+}
+
+int binarySearchIndexByCedula(const std::vector<Paciente>& pacientesOrdenados, const std::string& cedula) {
+    int left = 0;
+    int right = static_cast<int>(pacientesOrdenados.size()) - 1;
+
+    while (left <= right) {
+        const int middle = left + (right - left) / 2;
+        if (pacientesOrdenados[static_cast<std::size_t>(middle)].cedula == cedula) {
+            return middle;
+        }
+        if (pacientesOrdenados[static_cast<std::size_t>(middle)].cedula < cedula) {
+            left = middle + 1;
+        } else {
+            right = middle - 1;
+        }
+    }
+
+    return -1;
+}
+
 }  // namespace
 
 CedulaSearchResult linearSearchByCedula(const std::vector<Paciente>& pacientes, const std::string& cedula) {
     const auto start = std::chrono::high_resolution_clock::now();
 
-    int index = -1;
-    for (std::size_t i = 0; i < pacientes.size(); ++i) {
-        if (pacientes[i].cedula == cedula) {
-            index = static_cast<int>(i);
-            break;
-        }
-    }
+    const int index = linearSearchIndexByCedula(pacientes, cedula);
 
     const auto end = std::chrono::high_resolution_clock::now();
     const auto elapsed = std::chrono::duration<double, std::milli>(end - start).count();
     return {index, elapsed};
 }
 
-CedulaSearchResult binarySearchByCedula(std::vector<Paciente> pacientes, const std::string& cedula) {
+CedulaSearchResult binarySearchByCedula(
+    const std::vector<Paciente>& pacientesOrdenados,
+    const std::string& cedula
+) {
     const auto start = std::chrono::high_resolution_clock::now();
 
-    std::sort(
-        pacientes.begin(),
-        pacientes.end(),
-        [](const Paciente& a, const Paciente& b) { return a.cedula < b.cedula; }
-    );
-
-    int left = 0;
-    int right = static_cast<int>(pacientes.size()) - 1;
-    int found = -1;
-
-    while (left <= right) {
-        const int middle = left + (right - left) / 2;
-        if (pacientes[middle].cedula == cedula) {
-            found = middle;
-            break;
-        }
-        if (pacientes[middle].cedula < cedula) {
-            left = middle + 1;
-        } else {
-            right = middle - 1;
-        }
-    }
+    const int found = binarySearchIndexByCedula(pacientesOrdenados, cedula);
 
     const auto end = std::chrono::high_resolution_clock::now();
     const auto elapsed = std::chrono::duration<double, std::milli>(end - start).count();

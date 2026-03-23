@@ -224,7 +224,10 @@ export function Rendimiento() {
   const maxSearch = Math.max(linealMs, binariaMs, 1);
   const improvement =
     searchComparison?.improvementPct ?? (1 - binariaMs / Math.max(linealMs, 0.0001)) * 100;
-  const speedUp = linealMs / Math.max(binariaMs, 0.0001);
+  const searchHasTie = Math.abs(linealMs - binariaMs) < 0.01;
+  const binaryIsFaster = binariaMs < linealMs;
+  const binarySpeedUp = linealMs / Math.max(binariaMs, 0.0001);
+  const linearSpeedUp = binariaMs / Math.max(linealMs, 0.0001);
 
   const orderedGrowthData = useMemo(() => {
     return [...growthData].sort(
@@ -567,7 +570,7 @@ export function Rendimiento() {
             </div>
 
             <p className="text-sm text-gray-700 mb-6">
-              Comparación de búsquedas sobre datos ordenados con Quick Sort
+              Comparación real sobre una copia preordenada por cédula. El tiempo de ordenamiento no se mezcla con la búsqueda binaria.
             </p>
 
             <div className="space-y-4">
@@ -595,7 +598,11 @@ export function Rendimiento() {
             <div className="mt-6 p-4 bg-green-100 rounded-xl">
               <p className="text-sm font-medium text-green-900 mb-1">Conclusión</p>
               <p className="text-xs text-green-800">
-                La búsqueda binaria es <strong>{speedUp.toFixed(1)}x más rápida</strong> en datasets ordenados ({improvement.toFixed(1)}% de mejora)
+                {searchHasTie
+                  ? "La medición quedó prácticamente empatada entre ambos métodos."
+                  : binaryIsFaster
+                    ? `La búsqueda binaria fue ${binarySpeedUp.toFixed(1)}x más rápida (${improvement.toFixed(1)}% de mejora).`
+                    : `En esta medición la búsqueda lineal fue ${linearSpeedUp.toFixed(1)}x más rápida (${Math.abs(improvement).toFixed(1)}% de diferencia).`}
               </p>
             </div>
           </div>
