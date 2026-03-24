@@ -768,21 +768,21 @@ export function Busqueda() {
       <TopBar title="Búsqueda Comparativa" showFilters={false} />
 
       <div className="mb-6 rounded-3xl bg-white p-6 shadow-sm">
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-9">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-[1.1fr_1.7fr_1fr_1fr_0.9fr_1fr_1fr_1.1fr] xl:items-end">
           <div>
-            <label className="mb-2 block text-xs font-medium text-gray-700">Tipo de búsqueda</label>
+            <label className="mb-2 block min-h-8 text-xs font-medium text-gray-700">Tipo de búsqueda</label>
             <select
               value={searchType}
               onChange={(event) => setSearchType(event.target.value as SearchType)}
-              className="w-full rounded-xl border border-gray-200 px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+              className="h-11 w-full rounded-xl border border-gray-200 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
             >
               <option value="cedula">Cédula exacta</option>
               <option value="nombre">Nombre parcial</option>
             </select>
           </div>
 
-          <div className="xl:col-span-2">
-            <label className="mb-2 block text-xs font-medium text-gray-700">Término</label>
+          <div>
+            <label className="mb-2 block min-h-8 text-xs font-medium text-gray-700">Término</label>
             <input
               type="text"
               value={searchTerm}
@@ -794,36 +794,36 @@ export function Busqueda() {
                 }
               }}
               placeholder={searchType === "cedula" ? "001-0000000-0" : "Nombre del paciente"}
-              className="w-full rounded-xl border border-gray-200 px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+              className="h-11 w-full rounded-xl border border-gray-200 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
             />
           </div>
 
           <div>
-            <label className="mb-2 block text-xs font-medium text-gray-700">Fecha desde</label>
+            <label className="mb-2 block min-h-8 text-xs font-medium text-gray-700">Fecha desde</label>
             <input
               type="date"
               value={dateFrom}
               onChange={(event) => setDateFrom(event.target.value)}
-              className="w-full rounded-xl border border-gray-200 px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+              className="h-11 w-full rounded-xl border border-gray-200 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
             />
           </div>
 
           <div>
-            <label className="mb-2 block text-xs font-medium text-gray-700">Fecha hasta</label>
+            <label className="mb-2 block min-h-8 text-xs font-medium text-gray-700">Fecha hasta</label>
             <input
               type="date"
               value={dateTo}
               onChange={(event) => setDateTo(event.target.value)}
-              className="w-full rounded-xl border border-gray-200 px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+              className="h-11 w-full rounded-xl border border-gray-200 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
             />
           </div>
 
           <div>
-            <label className="mb-2 block text-xs font-medium text-gray-700">Gravedad</label>
+            <label className="mb-2 block min-h-8 text-xs font-medium text-gray-700">Gravedad</label>
             <select
               value={severityLevel}
               onChange={(event) => setSeverityLevel(event.target.value)}
-              className="w-full rounded-xl border border-gray-200 px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+              className="h-11 w-full rounded-xl border border-gray-200 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
             >
               <option value="all">Todas</option>
               <option value="1">Gravedad 1</option>
@@ -835,11 +835,11 @@ export function Busqueda() {
           </div>
 
           <div>
-            <label className="mb-2 block text-xs font-medium text-gray-700">Tamaño del dataset</label>
+            <label className="mb-2 block min-h-8 text-xs font-medium text-gray-700">Tamaño del dataset</label>
             <select
               value={datasetSize}
               onChange={(event) => setDatasetSize(event.target.value)}
-              className="w-full rounded-xl border border-gray-200 px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+              className="h-11 w-full rounded-xl border border-gray-200 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
             >
               <option value="500">500 registros</option>
               <option value="5000">5,000 registros</option>
@@ -849,11 +849,11 @@ export function Busqueda() {
           </div>
 
           <div>
-            <label className="mb-2 block text-xs font-medium text-gray-700">Algoritmo</label>
+            <label className="mb-2 block min-h-8 text-xs font-medium text-gray-700">Algoritmo</label>
             <select
               value={algorithm}
               onChange={(event) => setAlgorithm(event.target.value as SearchControlAlgorithm)}
-              className="w-full rounded-xl border border-gray-200 px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+              className="h-11 w-full rounded-xl border border-gray-200 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
             >
               <option value="lineal">Búsqueda Lineal</option>
               <option value="binaria">Búsqueda Binaria</option>
@@ -865,7 +865,7 @@ export function Busqueda() {
             <button
               onClick={runImmediateSearch}
               disabled={isSearching || isLoadingData}
-              className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 px-6 py-2 text-white transition-all hover:shadow-lg disabled:opacity-50"
+              className="flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 px-6 text-white transition-all hover:shadow-lg disabled:opacity-50"
             >
               {isSearching ? (
                 <>
