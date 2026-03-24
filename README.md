@@ -1,80 +1,150 @@
-### Dashboard Clínico UTN
+# Dashboard Clinico
 
-Sistema de Gestión de Clínica con Análisis de Rendimiento. Entorno dockerizado que ejecuta una API backend en C++ (compilada con CMake) y una interfaz gráfica frontend servida a través de Nginx.
+Sistema de gestion clinica con backend en C++ (CMake + httplib) y frontend React + Vite.
 
-Desarrollado para el curso de Estructuras de Datos
+El proyecto incluye modulos de:
 
-### Setup
+- registro y consulta de pacientes,
+- diagnosticos y cola de atencion,
+- busqueda por cedula/nombre con comparativa lineal vs binaria,
+- filtros por fecha y gravedad en el flujo de busqueda,
+- panel de rendimiento y metricas del sistema.
 
-#### 1. Configurar variables de entorno (Opcional)
+## Arquitectura
 
-Cada servicio lee su configuración de un archivo `.env` en su respectivo directorio `envs/`. El `Makefile` automatiza la creación de este archivo copiando las plantillas `.env.dev` o `.env.prod` según el comando que ejecutes.
+- `backend/`: API REST en C++.
+- `frontend/`: interfaz React/Vite.
+- `compose.yml`: orquesta `api` (puerto 8080) y `web` (puerto 80).
+- `docker/backend/Dockerfile`: compila y empaqueta el binario `clinica_api`.
+- `docker/frontend/Dockerfile`: build de Vite y servido por Nginx.
 
-Si necesitas ajustar los parámetros para el Módulo de Rendimiento (ej. cantidad de pacientes generados), edita los archivos base:
+Persistencia actual:
 
-**`docker/backend/envs/.env.dev`**
+- `backend/pacientes.csv`
+- `backend/consultas.csv`
+- `backend/diagnosticos.csv`
 
-```env
-APP_ENV=development
-PORT=8080
-MAX_PACIENTES=500     # Modificar para pruebas de carga
-DB_PATH=/app/backend/data/clinica_dev.db
+## Requisitos
 
+- Docker + Docker Compose
+- `make` (opcional, recomendado)
 
-2. Iniciar los servicios
+Para desarrollo local sin Docker (frontend):
 
-# Para programar (Desarrollo)
+- Node.js 20+
+- npm
+
+## Ejecucion rapida (Docker)
+
+### Desarrollo
+
+```bash
 make dev
+```
 
-# Para la revisión del profesor (Producción)
+- Copia `docker/backend/envs/.env.dev` a `docker/backend/envs/.env`.
+- Levanta servicios con logs en vivo.
+
+### Produccion/evaluacion
+
+```bash
 make prod
+```
 
-Esto compilará el código de C++ en vivo y levantará el servidor web. El sistema de base de datos (SQLite) se inicializará automáticamente en el volumen asignado.
+- Copia `docker/backend/envs/.env.prod` a `docker/backend/envs/.env`.
+- Levanta servicios en segundo plano.
 
+### Detener y limpiar
 
-3. Acceder al sistema
-Abre http://localhost en tu navegador web para utilizar la interfaz gráfica.
-Las peticiones internas se comunicarán con la API de C++ alojada en el puerto 8080.
-
-Usage
-
-# Iniciar el entorno de desarrollo (logs en vivo)
-make dev
-
-# Iniciar el entorno de evaluación (en segundo plano)
-make prod
-
-# Detener los contenedores (mantiene los datos generados)
+```bash
 make down
-
-# Detener y borrar todos los datos (caché CMake y BD SQLite)
 make clean
-
-# Ver consumo de RAM y CPU en vivo (Ideal para el Módulo 4)
 make stats
+```
 
+- `down`: detiene contenedores.
+- `clean`: detiene y limpia volumenes/cache definidos por el `Makefile`.
+- `stats`: muestra consumo de recursos en vivo.
 
-Project Structure
+## Acceso
 
+- Frontend: `http://localhost`
+- Backend API: `http://localhost:8080`
+
+## Variables de entorno backend
+
+Plantillas:
+
+- `docker/backend/envs/.env.dev`
+- `docker/backend/envs/.env.prod`
+
+Variables principales:
+
+- `APP_ENV`
+- `PORT`
+- `MAX_PACIENTES`
+- `DB_PATH` (legado de configuracion; la app actual trabaja con CSV)
+
+## Ejecucion local (sin Docker)
+
+### Frontend
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+### Backend
+
+Ver instrucciones detalladas en `backend/README.md`.
+
+## Endpoints principales
+
+Ver detalle completo en `backend/README.md`. Resumen:
+
+- `GET /api/health`
+- `GET /api/pacientes`
+- `GET /api/consultas`
+- `GET /api/diagnosticos`
+- `GET /api/cola`
+- `GET /api/busqueda?nombre=<valor>`
+- `GET /api/busqueda?cedula=<valor>&algoritmo=lineal|binaria|ambos`
+- `POST /api/benchmark/sort`
+- `POST /api/benchmark/search`
+- `GET /api/system/metrics`
+
+## Estructura del proyecto
+
+```text
 Dashboard_Clinico/
 ├── compose.yml
 ├── Makefile
-├── docker/
-│   ├── backend/
-│   │   ├── compose.yml
-│   │   ├── Dockerfile
-│   │   └── envs/
-│   │       ├── .env
-│   │       ├── .env.dev
-│   │       └── .env.prod
-│   └── frontend/
-│       └── compose.yml
 ├── backend/
+│   ├── CMakeLists.txt
+│   ├── main_backend.cpp
 │   ├── algorithms/
-│   ├── data/
-│   ├── models/
-│   ├── performance/
 │   ├── services/
-│   └── CMakeLists.txt
-└── frontend/
+│   ├── performance/
+│   ├── models/
+│   ├── third_party/
+│   ├── pacientes.csv
+│   ├── consultas.csv
+│   └── diagnosticos.csv
+├── frontend/
+│   ├── package.json
+│   ├── src/
+│   └── vite.config.ts
+└── docker/
+	├── backend/
+	│   ├── Dockerfile
+	│   └── envs/
+	└── frontend/
+		├── Dockerfile
+		└── nginx.conf
 ```
+
+## Notas
+
+- La pantalla de busqueda integra filtros por fecha y gravedad junto con comparativa de algoritmos.
+- El frontend trabaja con navegacion interna por componentes (sin router tradicional para las vistas principales).
