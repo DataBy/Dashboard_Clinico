@@ -20,6 +20,10 @@ std::size_t normalizeSize(std::size_t size) {
     return size == 0 ? kDefaultSize : size;
 }
 
+double clampNonNegativeMs(double value) {
+    return std::max(0.0, value);
+}
+
 std::vector<std::size_t> resolveGrowthSizes(std::size_t requestedSize) {
     const std::size_t normalized = normalizeSize(requestedSize);
     const std::vector<std::size_t> baseSizes = {500, 5000, 50000, 200000};
@@ -181,7 +185,7 @@ CedulaSearchBenchmarkResult benchmarkCedulaComparison(
     bool found = false;
 
     volatile int linearGuard = 0;
-    const auto linearStart = std::chrono::high_resolution_clock::now();
+    const auto linearStart = std::chrono::steady_clock::now();
     for (std::size_t repetition = 0; repetition < repetitions; ++repetition) {
         for (const auto& target : targets) {
             const int index = linearSearchIndexByCedula(pacientes, target);
@@ -191,22 +195,24 @@ CedulaSearchBenchmarkResult benchmarkCedulaComparison(
             linearGuard ^= index;
         }
     }
-    const auto linearEnd = std::chrono::high_resolution_clock::now();
+    const auto linearEnd = std::chrono::steady_clock::now();
 
     volatile int binaryGuard = linearGuard;
-    const auto binaryStart = std::chrono::high_resolution_clock::now();
+    const auto binaryStart = std::chrono::steady_clock::now();
     for (std::size_t repetition = 0; repetition < repetitions; ++repetition) {
         for (const auto& target : targets) {
             const int index = binarySearchIndexByCedula(pacientesOrdenados, target);
             binaryGuard ^= index;
         }
     }
-    const auto binaryEnd = std::chrono::high_resolution_clock::now();
+    const auto binaryEnd = std::chrono::steady_clock::now();
 
-    const double linearElapsed =
-        std::chrono::duration<double, std::milli>(linearEnd - linearStart).count() / divisor;
-    const double binaryElapsed =
-        std::chrono::duration<double, std::milli>(binaryEnd - binaryStart).count() / divisor;
+    const double linearElapsed = clampNonNegativeMs(
+        std::chrono::duration<double, std::milli>(linearEnd - linearStart).count() / divisor
+    );
+    const double binaryElapsed = clampNonNegativeMs(
+        std::chrono::duration<double, std::milli>(binaryEnd - binaryStart).count() / divisor
+    );
 
     (void)linearGuard;
     (void)binaryGuard;
@@ -276,7 +282,7 @@ nlohmann::json timingsToJson(const std::vector<sorting::SortTiming>& timings) {
         data.push_back({
             {"name", name},
             {"algorithm", timing.algorithm},
-            {"timeMs", timing.elapsedMs},
+            {"timeMs", clampNonNegativeMs(timing.elapsedMs)},
         });
     }
 
@@ -424,23 +430,32 @@ nlohmann::json benchmarkBusquedaPacientes(
         };
     }
 
-    const auto sortStart = std::chrono::high_resolution_clock::now();
+    const auto sortStart = std::chrono::steady_clock::now();
     const auto pacientesOrdenados = sortPacientesByCedula(expanded);
-    const auto sortEnd = std::chrono::high_resolution_clock::now();
-    const double sortMs = std::chrono::duration<double, std::milli>(sortEnd - sortStart).count();
+    const auto sortEnd = std::chrono::steady_clock::now();
+    const double sortMs =
+        clampNonNegativeMs(std::chrono::duration<double, std::milli>(sortEnd - sortStart).count());
 
     const auto targets = buildCedulaSearchTargets(expanded, cedula);
     const std::string targetCedula =
         targets.empty() ? "" : (cedula.empty() ? targets[targets.size() / 2] : targets[0]);
     const auto comparison = benchmarkCedulaComparison(expanded, pacientesOrdenados, targets);
 
-    const double binariaTotalMs = sortMs + comparison.binariaMs;
+    const double binariaTotalMs = clampNonNegativeMs(sortMs + comparison.binariaMs);
     double improvementWithoutSortPct = 0.0;
     double improvementWithSortPct = 0.0;
 
     if (comparison.linealMs > 0.0) {
-        improvementWithoutSortPct = (1.0 - (comparison.binariaMs / comparison.linealMs)) * 100.0;
-        improvementWithSortPct = (1.0 - (binariaTotalMs / comparison.linealMs)) * 100.0;
+        improvementWithoutSortPct = std::clamp(
+            (1.0 - (comparison.binariaMs / comparison.linealMs)) * 100.0,
+            0.0,
+            100.0
+        );
+        improvementWithSortPct = std::clamp(
+            (1.0 - (binariaTotalMs / comparison.linealMs)) * 100.0,
+            0.0,
+            100.0
+        );
     }
 
     nlohmann::json breakEvenQueries = nullptr;

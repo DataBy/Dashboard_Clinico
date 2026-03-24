@@ -1,5 +1,6 @@
 #include "sorting.h"
 
+#include <algorithm>
 #include <chrono>
 #include <cctype>
 #include <functional>
@@ -12,10 +13,11 @@ namespace {
 
 double measureSort(const std::vector<double>& values, const std::function<void(std::vector<double>&)>& sorter) {
     std::vector<double> copy = values;
-    const auto start = std::chrono::high_resolution_clock::now();
+    const auto start = std::chrono::steady_clock::now();
     sorter(copy);
-    const auto end = std::chrono::high_resolution_clock::now();
-    return std::chrono::duration<double, std::milli>(end - start).count();
+    const auto end = std::chrono::steady_clock::now();
+    const double elapsedMs = std::chrono::duration<double, std::milli>(end - start).count();
+    return std::max(0.0, elapsedMs);
 }
 
 void bubbleSort(std::vector<double>& values) {

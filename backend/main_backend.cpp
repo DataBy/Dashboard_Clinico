@@ -678,6 +678,9 @@ int main() {
 
     httplib::Server server;
     setCorsHeaders(server);
+    server.set_keep_alive_timeout(120);
+    server.set_read_timeout(3600, 0);
+    server.set_write_timeout(3600, 0);
 
     server.Options(R"(.*)", [](const httplib::Request&, httplib::Response& res) {
         res.status = 204;
@@ -1064,13 +1067,16 @@ int main() {
                 {"filtros", {{"fechaDesde", fechaDesde}, {"fechaHasta", fechaHasta}, {"gravedad", gravedad}}},
                 {"filtrosAplicados", resultado.filtrosAplicados},
                 {"tiempoMs",
-                 resultado.algoritmo == "binaria"
-                     ? resultado.tiempoBinariaMs
-                     : (resultado.algoritmo == "ambos"
-                            ? std::min(resultado.tiempoLinealMs, resultado.tiempoBinariaMs > 0.0
-                                                                 ? resultado.tiempoBinariaMs
-                                                                 : resultado.tiempoLinealMs)
-                            : resultado.tiempoLinealMs)},
+                 std::max(
+                     0.0,
+                     resultado.algoritmo == "binaria"
+                         ? resultado.tiempoBinariaMs
+                         : (resultado.algoritmo == "ambos"
+                                ? std::min(resultado.tiempoLinealMs, resultado.tiempoBinariaMs > 0.0
+                                                                     ? resultado.tiempoBinariaMs
+                                                                     : resultado.tiempoLinealMs)
+                                : resultado.tiempoLinealMs)
+                 )},
                 {"comparativa", {{"linealMs", resultado.tiempoLinealMs}, {"binariaMs", resultado.tiempoBinariaMs}}},
                 {"linealMs", resultado.tiempoLinealMs},
                 {"binariaMs", resultado.tiempoBinariaMs},

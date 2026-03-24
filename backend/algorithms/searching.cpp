@@ -50,12 +50,12 @@ int binarySearchIndexByCedula(const std::vector<Paciente>& pacientesOrdenados, c
 }  // namespace
 
 CedulaSearchResult linearSearchByCedula(const std::vector<Paciente>& pacientes, const std::string& cedula) {
-    const auto start = std::chrono::high_resolution_clock::now();
+    const auto start = std::chrono::steady_clock::now();
 
     const int index = linearSearchIndexByCedula(pacientes, cedula);
 
-    const auto end = std::chrono::high_resolution_clock::now();
-    const auto elapsed = std::chrono::duration<double, std::milli>(end - start).count();
+    const auto end = std::chrono::steady_clock::now();
+    const auto elapsed = std::max(0.0, std::chrono::duration<double, std::milli>(end - start).count());
     return {index, elapsed};
 }
 
@@ -63,24 +63,24 @@ CedulaSearchResult binarySearchByCedula(
     const std::vector<Paciente>& pacientesOrdenados,
     const std::string& cedula
 ) {
-    const auto start = std::chrono::high_resolution_clock::now();
+    const auto start = std::chrono::steady_clock::now();
 
     const int found = binarySearchIndexByCedula(pacientesOrdenados, cedula);
 
-    const auto end = std::chrono::high_resolution_clock::now();
-    const auto elapsed = std::chrono::duration<double, std::milli>(end - start).count();
+    const auto end = std::chrono::steady_clock::now();
+    const auto elapsed = std::max(0.0, std::chrono::duration<double, std::milli>(end - start).count());
     return {found, elapsed};
 }
 
 NameSearchResult linearSearchByNombre(const std::vector<Paciente>& pacientes, const std::string& term, std::size_t maxResults) {
-    const auto start = std::chrono::high_resolution_clock::now();
+    const auto start = std::chrono::steady_clock::now();
 
     std::vector<Paciente> matches;
     const std::string loweredTerm = toLower(term);
 
     if (loweredTerm.empty()) {
-        const auto end = std::chrono::high_resolution_clock::now();
-        const auto elapsed = std::chrono::duration<double, std::milli>(end - start).count();
+        const auto end = std::chrono::steady_clock::now();
+        const auto elapsed = std::max(0.0, std::chrono::duration<double, std::milli>(end - start).count());
         return {matches, elapsed};
     }
 
@@ -94,8 +94,8 @@ NameSearchResult linearSearchByNombre(const std::vector<Paciente>& pacientes, co
         }
     }
 
-    const auto end = std::chrono::high_resolution_clock::now();
-    const auto elapsed = std::chrono::duration<double, std::milli>(end - start).count();
+    const auto end = std::chrono::steady_clock::now();
+    const auto elapsed = std::max(0.0, std::chrono::duration<double, std::milli>(end - start).count());
     return {matches, elapsed};
 }
 
