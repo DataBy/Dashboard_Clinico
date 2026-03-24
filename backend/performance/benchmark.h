@@ -14,13 +14,15 @@ namespace benchmark {
 nlohmann::json benchmarkOrdenamientoPacientes(
     const std::vector<Paciente>& pacientes,
     const std::string& campo,
-    std::size_t size
+    std::size_t size,
+    const std::vector<std::string>& algorithms = {}
 );
 
 nlohmann::json benchmarkOrdenamientoConsultas(
     const std::vector<Consulta>& consultas,
     const std::string& campo,
-    std::size_t size
+    std::size_t size,
+    const std::vector<std::string>& algorithms = {}
 );
 
 nlohmann::json benchmarkBusquedaPacientes(

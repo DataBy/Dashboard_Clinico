@@ -5,10 +5,10 @@
 #include <cctype>
 #include <cmath>
 #include <cstddef>
+#include <set>
 #include <string>
 #include <vector>
 
-#include "../algorithms/searching.h"
 #include "../algorithms/sorting.h"
 
 namespace benchmark {
@@ -42,6 +42,40 @@ std::string toLower(const std::string& value) {
     return lowered;
 }
 
+std::vector<std::string> normalizeSelectedAlgorithms(const std::vector<std::string>& algorithms) {
+    static const std::vector<std::string> allAlgorithms = {"bubble", "selection", "insertion", "quick"};
+
+    if (algorithms.empty()) {
+        return allAlgorithms;
+    }
+
+    bool includeAll = false;
+    for (const auto& algorithm : algorithms) {
+        const std::string lowered = toLower(algorithm);
+        if (lowered == "all" || lowered == "todos") {
+            includeAll = true;
+            break;
+        }
+    }
+    if (includeAll) {
+        return allAlgorithms;
+    }
+
+    std::set<std::string> selectedSet;
+    for (const auto& algorithm : algorithms) {
+        selectedSet.insert(toLower(algorithm));
+    }
+
+    std::vector<std::string> selected;
+    for (const auto& candidate : allAlgorithms) {
+        if (selectedSet.find(candidate) != selectedSet.end()) {
+            selected.push_back(candidate);
+        }
+    }
+
+    return selected.empty() ? allAlgorithms : selected;
+}
+
 template <typename T>
 std::vector<T> expandDataset(const std::vector<T>& base, std::size_t size) {
     const std::size_t normalized = normalizeSize(size);
@@ -73,7 +107,6 @@ int linearSearchIndexByCedula(const std::vector<Paciente>& pacientes, const std:
             return static_cast<int>(i);
         }
     }
-
     return -1;
 }
 
@@ -84,7 +117,6 @@ int binarySearchIndexByCedula(const std::vector<Paciente>& pacientesOrdenados, c
     while (left <= right) {
         const int middle = left + (right - left) / 2;
         const auto& candidate = pacientesOrdenados[static_cast<std::size_t>(middle)].cedula;
-
         if (candidate == cedula) {
             return middle;
         }
@@ -94,7 +126,6 @@ int binarySearchIndexByCedula(const std::vector<Paciente>& pacientesOrdenados, c
             right = middle - 1;
         }
     }
-
     return -1;
 }
 
@@ -105,7 +136,6 @@ std::vector<std::string> buildCedulaSearchTargets(
     if (!cedula.empty()) {
         return {cedula};
     }
-
     if (pacientes.empty()) {
         return {};
     }
@@ -136,9 +166,9 @@ std::size_t resolveSearchRepetitions(std::size_t datasetSize, std::size_t sample
 }
 
 struct CedulaSearchBenchmarkResult {
-    double linealMs;
-    double binariaMs;
-    bool found;
+    double linealMs = 0.0;
+    double binariaMs = 0.0;
+    bool found = false;
 };
 
 CedulaSearchBenchmarkResult benchmarkCedulaComparison(
@@ -147,7 +177,7 @@ CedulaSearchBenchmarkResult benchmarkCedulaComparison(
     const std::vector<std::string>& targets
 ) {
     if (pacientes.empty() || pacientesOrdenados.empty() || targets.empty()) {
-        return {0.0, 0.0, false};
+        return {};
     }
 
     const std::size_t repetitions = resolveSearchRepetitions(pacientes.size(), targets.size());
@@ -177,9 +207,9 @@ CedulaSearchBenchmarkResult benchmarkCedulaComparison(
     }
     const auto binaryEnd = std::chrono::high_resolution_clock::now();
 
-    const auto linearElapsed =
+    const double linearElapsed =
         std::chrono::duration<double, std::milli>(linearEnd - linearStart).count() / divisor;
-    const auto binaryElapsed =
+    const double binaryElapsed =
         std::chrono::duration<double, std::milli>(binaryEnd - binaryStart).count() / divisor;
 
     (void)linearGuard;
@@ -278,7 +308,10 @@ nlohmann::json timingsToJson(
     return data;
 }
 
-nlohmann::json benchmarkSortValues(const std::vector<double>& values) {
+nlohmann::json benchmarkSortValues(
+    const std::vector<double>& values,
+    const std::vector<std::string>& selectedAlgorithms
+) {
     if (values.empty()) {
         return {
             {"results", nlohmann::json::array()},
@@ -288,7 +321,7 @@ nlohmann::json benchmarkSortValues(const std::vector<double>& values) {
 
     const std::size_t sampleSize = std::min(values.size(), kSortSampleCap);
     std::vector<double> sample(values.begin(), values.begin() + static_cast<std::ptrdiff_t>(sampleSize));
-    const auto measured = sorting::benchmarkSortAlgorithms(sample);
+    const auto measured = sorting::benchmarkSortAlgorithms(sample, selectedAlgorithms);
 
     return {
         {"results", timingsToJson(measured, values.size(), sampleSize)},
@@ -302,11 +335,13 @@ nlohmann::json buildSortBenchmark(
     const std::string& campo,
     std::size_t size,
     const std::string& datasetName,
+    const std::vector<std::string>& algorithms,
     Extractor extractor
 ) {
+    const auto selectedAlgorithms = normalizeSelectedAlgorithms(algorithms);
     const auto expanded = expandDataset(baseData, size);
     const auto values = extractor(expanded, campo);
-    auto sortData = benchmarkSortValues(values);
+    auto sortData = benchmarkSortValues(values, selectedAlgorithms);
 
     const std::vector<std::size_t> growthSizes = {500, 5000, 50000, 200000};
     nlohmann::json growth = nlohmann::json::array();
@@ -314,7 +349,7 @@ nlohmann::json buildSortBenchmark(
     for (const auto growthSize : growthSizes) {
         const auto expandedGrowth = expandDataset(baseData, growthSize);
         const auto growthValues = extractor(expandedGrowth, campo);
-        auto growthBench = benchmarkSortValues(growthValues);
+        auto growthBench = benchmarkSortValues(growthValues, selectedAlgorithms);
 
         double bubble = 0.0;
         double selection = 0.0;
@@ -348,6 +383,7 @@ nlohmann::json buildSortBenchmark(
         {"dataset", datasetName},
         {"campo", campo},
         {"size", normalizeSize(size)},
+        {"selectedAlgorithms", selectedAlgorithms},
         {"results", sortData["results"]},
         {"growth", growth},
     };
@@ -358,13 +394,15 @@ nlohmann::json buildSortBenchmark(
 nlohmann::json benchmarkOrdenamientoPacientes(
     const std::vector<Paciente>& pacientes,
     const std::string& campo,
-    std::size_t size
+    std::size_t size,
+    const std::vector<std::string>& algorithms
 ) {
     return buildSortBenchmark(
         pacientes,
         campo,
         size,
         "pacientes",
+        algorithms,
         [](const std::vector<Paciente>& data, const std::string& selectedField) {
             return extractPacienteValues(data, selectedField);
         }
@@ -374,13 +412,15 @@ nlohmann::json benchmarkOrdenamientoPacientes(
 nlohmann::json benchmarkOrdenamientoConsultas(
     const std::vector<Consulta>& consultas,
     const std::string& campo,
-    std::size_t size
+    std::size_t size,
+    const std::vector<std::string>& algorithms
 ) {
     return buildSortBenchmark(
         consultas,
         campo,
         size,
         "consultas",
+        algorithms,
         [](const std::vector<Consulta>& data, const std::string& selectedField) {
             return extractConsultaValues(data, selectedField);
         }
@@ -399,20 +439,43 @@ nlohmann::json benchmarkBusquedaPacientes(
             {"cedula", cedula},
             {"linealMs", 0.0},
             {"binariaMs", 0.0},
+            {"sortMs", 0.0},
+            {"binariaTotalMs", 0.0},
             {"improvementPct", 0.0},
+            {"improvementWithoutSortPct", 0.0},
+            {"improvementWithSortPct", 0.0},
+            {"breakEvenQueries", nullptr},
             {"found", false},
         };
     }
 
+    const auto sortStart = std::chrono::high_resolution_clock::now();
     const auto pacientesOrdenados = sortPacientesByCedula(expanded);
+    const auto sortEnd = std::chrono::high_resolution_clock::now();
+    const double sortMs = std::chrono::duration<double, std::milli>(sortEnd - sortStart).count();
+
     const auto targets = buildCedulaSearchTargets(expanded, cedula);
     const std::string targetCedula =
         targets.empty() ? "" : (cedula.empty() ? targets[targets.size() / 2] : targets[0]);
     const auto comparison = benchmarkCedulaComparison(expanded, pacientesOrdenados, targets);
 
-    double improvementPct = 0.0;
+    const double binariaTotalMs = sortMs + comparison.binariaMs;
+    double improvementWithoutSortPct = 0.0;
+    double improvementWithSortPct = 0.0;
+
     if (comparison.linealMs > 0.0) {
-        improvementPct = (1.0 - (comparison.binariaMs / comparison.linealMs)) * 100.0;
+        improvementWithoutSortPct = (1.0 - (comparison.binariaMs / comparison.linealMs)) * 100.0;
+        improvementWithSortPct = (1.0 - (binariaTotalMs / comparison.linealMs)) * 100.0;
+    }
+
+    nlohmann::json breakEvenQueries = nullptr;
+    const double gainPerQuery = comparison.linealMs - comparison.binariaMs;
+    if (gainPerQuery > 0.0) {
+        if (sortMs <= 0.0) {
+            breakEvenQueries = 0;
+        } else {
+            breakEvenQueries = static_cast<std::size_t>(std::ceil(sortMs / gainPerQuery));
+        }
     }
 
     return {
@@ -420,7 +483,12 @@ nlohmann::json benchmarkBusquedaPacientes(
         {"cedula", targetCedula},
         {"linealMs", comparison.linealMs},
         {"binariaMs", comparison.binariaMs},
-        {"improvementPct", improvementPct},
+        {"sortMs", sortMs},
+        {"binariaTotalMs", binariaTotalMs},
+        {"improvementPct", improvementWithoutSortPct},
+        {"improvementWithoutSortPct", improvementWithoutSortPct},
+        {"improvementWithSortPct", improvementWithSortPct},
+        {"breakEvenQueries", breakEvenQueries},
         {"found", comparison.found},
     };
 }

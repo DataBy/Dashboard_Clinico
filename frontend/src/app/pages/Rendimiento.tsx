@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { BarChart3, Cpu, TrendingUp, Zap } from "lucide-react";
+import { BarChart3, Check, Cpu, TrendingUp, Zap } from "lucide-react";
 import {
   BarChart,
   Bar,
@@ -11,30 +11,36 @@ import {
   ResponsiveContainer,
   LineChart,
   Line,
+  Cell,
 } from "recharts";
 import { TopBar } from "../components/TopBar";
-import { type ApiSystemMetrics, getSystemMetrics, runSortBenchmark } from "../../lib/api";
+import { type ApiSearchBenchmarkResponse, type ApiSystemMetrics, getSystemMetrics, runSortBenchmark } from "../../lib/api";
 
-const defaultPerformanceData = [
-  { name: "Bubble", tiempo: 245, color: "#ef4444" },
-  { name: "Selection", tiempo: 178, color: "#f59e0b" },
-  { name: "Insertion", tiempo: 156, color: "#10b981" },
-  { name: "Quick", tiempo: 42, color: "#3b82f6" },
+type AlgorithmKey = "bubble" | "selection" | "insertion" | "quick";
+
+interface PerformanceBarItem {
+  name: string;
+  algorithm: AlgorithmKey;
+  tiempo: number;
+  color: string;
+}
+
+interface GrowthItem {
+  size: string;
+  bubble: number;
+  selection: number;
+  insertion: number;
+  quick: number;
+}
+
+const algorithmConfig: Array<{ key: AlgorithmKey; label: string; color: string }> = [
+  { key: "bubble", label: "Bubble", color: "#ef4444" },
+  { key: "selection", label: "Selection", color: "#f59e0b" },
+  { key: "insertion", label: "Insertion", color: "#10b981" },
+  { key: "quick", label: "Quick", color: "#3b82f6" },
 ];
 
-const defaultGrowthData = [
-  { size: "500", bubble: 12, selection: 8, insertion: 7, quick: 2 },
-  { size: "5K", bubble: 245, selection: 178, insertion: 156, quick: 42 },
-  { size: "50K", bubble: 2450, selection: 1780, insertion: 1560, quick: 420 },
-  { size: "200K", bubble: 9800, selection: 7120, insertion: 6240, quick: 1680 },
-];
-
-const algorithmColor: Record<string, string> = {
-  Bubble: "#ef4444",
-  Selection: "#f59e0b",
-  Insertion: "#10b981",
-  Quick: "#3b82f6",
-};
+const allAlgorithmKeys = algorithmConfig.map((item) => item.key);
 
 const sizeFilters = [
   { value: "500", label: "500" },
@@ -42,15 +48,6 @@ const sizeFilters = [
   { value: "50000", label: "50k" },
   { value: "200000", label: "200k" },
 ];
-
-const algorithmLabelByKey = {
-  bubble: "Bubble",
-  selection: "Selection",
-  insertion: "Insertion",
-  quick: "Quick",
-} as const;
-
-type AlgorithmKey = keyof typeof algorithmLabelByKey;
 
 function formatNowTimestamp() {
   const now = new Date();
@@ -69,42 +66,46 @@ function normalizeDatasetSize(sizeLabel: string) {
   return normalized;
 }
 
+function toGrowthLabel(size: string) {
+  const numeric = Number(size);
+  if (!Number.isFinite(numeric) || numeric <= 0) {
+    return size;
+  }
+  return numeric >= 1000 ? `${Math.round(numeric / 1000)}K` : String(numeric);
+}
+
+function formatPercent(value: number) {
+  return `${value.toFixed(2)}%`;
+}
+
 export function Rendimiento() {
   const [dataset, setDataset] = useState("pacientes");
   const [sortBy, setSortBy] = useState("nombre");
   const [dataSize, setDataSize] = useState("5000");
-  const [selectedAlgorithm, setSelectedAlgorithm] = useState<AlgorithmKey | "all">("all");
   const [selectedSizeFilter, setSelectedSizeFilter] = useState("5000");
+  const [selectedAlgorithms, setSelectedAlgorithms] = useState<AlgorithmKey[]>(allAlgorithmKeys);
+  const [lastRunAlgorithms, setLastRunAlgorithms] = useState<AlgorithmKey[]>(allAlgorithmKeys);
   const [lastRunSize, setLastRunSize] = useState<string | null>(null);
   const [isRunning, setIsRunning] = useState(false);
   const [showResults, setShowResults] = useState(false);
-  const [performanceData, setPerformanceData] = useState(defaultPerformanceData);
-  const [growthData, setGrowthData] = useState(defaultGrowthData);
-  const [searchComparison, setSearchComparison] = useState<{
-    linealMs: number;
-    binariaMs: number;
-    improvementPct: number;
-  } | null>(null);
+  const [performanceData, setPerformanceData] = useState<PerformanceBarItem[]>([]);
+  const [growthData, setGrowthData] = useState<GrowthItem[]>([]);
+  const [searchComparison, setSearchComparison] = useState<ApiSearchBenchmarkResponse | null>(null);
   const [systemMetrics, setSystemMetrics] = useState<ApiSystemMetrics | null>(null);
   const [metricsNotice, setMetricsNotice] = useState<string | null>(null);
-  const [historial, setHistorial] = useState([
-    {
-      fecha: "2026-03-05 10:30",
-      dataset: "Pacientes",
-      campo: "Edad",
-      size: "5,000",
-      algoritmo: "Quick",
-      tiempo: "42.3 ms",
-    },
-    {
-      fecha: "2026-03-05 09:15",
-      dataset: "Consultas",
-      campo: "Fecha",
-      size: "5,000",
-      algoritmo: "Insertion",
-      tiempo: "156.8 ms",
-    },
-  ]);
+  const [historial, setHistorial] = useState<
+    Array<{
+      fecha: string;
+      dataset: string;
+      campo: string;
+      size: string;
+      algoritmos: string;
+      mejor: string;
+      tiempo: string;
+    }>
+  >([]);
+
+  const allSelected = selectedAlgorithms.length === allAlgorithmKeys.length;
 
   useEffect(() => {
     let disposed = false;
@@ -124,7 +125,7 @@ export function Rendimiento() {
         console.error(error);
         setSystemMetrics(null);
         setMetricsNotice(
-          "No se pudieron obtener las métricas del backend. Verifique que /api/system/metrics esté disponible."
+          "No se pudieron obtener las metricas del backend. Verifique /api/system/metrics."
         );
       }
     };
@@ -140,6 +141,20 @@ export function Rendimiento() {
     };
   }, []);
 
+  const toggleAllAlgorithms = () => {
+    setSelectedAlgorithms(allSelected ? ["quick"] : allAlgorithmKeys);
+  };
+
+  const toggleAlgorithm = (algorithm: AlgorithmKey) => {
+    setSelectedAlgorithms((prev) => {
+      if (prev.includes(algorithm)) {
+        const updated = prev.filter((item) => item !== algorithm);
+        return updated.length === 0 ? [algorithm] : updated;
+      }
+      return [...prev, algorithm];
+    });
+  };
+
   const handleExecute = async () => {
     setIsRunning(true);
     try {
@@ -147,70 +162,61 @@ export function Rendimiento() {
         dataset: dataset as "pacientes" | "consultas",
         campo: sortBy,
         size: Number(dataSize),
+        algoritmos: selectedAlgorithms,
       });
 
-      if (response.results.length > 0) {
-        setPerformanceData(
-          response.results.map((result) => ({
-            name: result.name,
-            tiempo: Number(result.timeMs.toFixed(2)),
-            color: algorithmColor[result.name] ?? "#6366f1",
-          }))
-        );
-      }
+      const configByLabel = new Map(algorithmConfig.map((item) => [item.label, item]));
+      const normalizedPerformance = response.results.map((result) => {
+        const config = configByLabel.get(result.name);
+        return {
+          name: result.name,
+          algorithm: (config?.key ?? "quick") as AlgorithmKey,
+          tiempo: Number(result.timeMs.toFixed(3)),
+          color: config?.color ?? "#6366f1",
+        };
+      });
 
-      if (response.growth.length > 0) {
-        setGrowthData(
-          response.growth.map((item) => {
-            const sizeNumeric = Number(item.size);
-            const sizeLabel =
-              sizeNumeric >= 1000 ? `${Math.round(sizeNumeric / 1000)}K` : String(sizeNumeric);
+      const normalizedGrowth = response.growth.map((item) => ({
+        size: toGrowthLabel(item.size),
+        bubble: Number(item.bubble.toFixed(3)),
+        selection: Number(item.selection.toFixed(3)),
+        insertion: Number(item.insertion.toFixed(3)),
+        quick: Number(item.quick.toFixed(3)),
+      }));
 
-            return {
-              size: sizeLabel,
-              bubble: Number(item.bubble.toFixed(2)),
-              selection: Number(item.selection.toFixed(2)),
-              insertion: Number(item.insertion.toFixed(2)),
-              quick: Number(item.quick.toFixed(2)),
-            };
-          })
-        );
-      }
+      const selectedFromResponse = (
+        response.selectedAlgorithms?.filter((value): value is AlgorithmKey =>
+          allAlgorithmKeys.includes(value as AlgorithmKey)
+        ) ?? selectedAlgorithms
+      ) as AlgorithmKey[];
 
-      if (response.searchComparison) {
-        setSearchComparison({
-          linealMs: response.searchComparison.linealMs,
-          binariaMs: response.searchComparison.binariaMs,
-          improvementPct: response.searchComparison.improvementPct,
-        });
-      }
-
-      const fastest = [...response.results].sort((a, b) => a.timeMs - b.timeMs)[0];
-      const timestamp = formatNowTimestamp();
-      const selectedResult =
-        selectedAlgorithm === "all"
-          ? fastest
-          : response.results.find((result) => result.algorithm === selectedAlgorithm) ?? fastest;
-
-      if (selectedResult) {
-        setHistorial((prev) =>
-          [
-            {
-              fecha: timestamp,
-              dataset: dataset === "pacientes" ? "Pacientes" : "Consultas",
-              campo: sortBy,
-              size: Number(dataSize).toLocaleString(),
-              algoritmo: selectedResult.name,
-              tiempo: `${selectedResult.timeMs.toFixed(2)} ms`,
-            },
-            ...prev,
-          ].slice(0, 8)
-        );
-      }
-
+      setPerformanceData(normalizedPerformance);
+      setGrowthData(normalizedGrowth);
+      setSearchComparison(response.searchComparison ?? null);
+      setLastRunAlgorithms(selectedFromResponse.length ? selectedFromResponse : selectedAlgorithms);
       setLastRunSize(dataSize);
       setSelectedSizeFilter(dataSize);
       setShowResults(true);
+
+      const fastest = [...response.results].sort((a, b) => a.timeMs - b.timeMs)[0];
+      if (fastest) {
+        setHistorial((prev) =>
+          [
+            {
+              fecha: formatNowTimestamp(),
+              dataset: dataset === "pacientes" ? "Pacientes" : "Consultas",
+              campo: sortBy,
+              size: Number(dataSize).toLocaleString(),
+              algoritmos: selectedFromResponse
+                .map((key) => algorithmConfig.find((item) => item.key === key)?.label ?? key)
+                .join(", "),
+              mejor: fastest.name,
+              tiempo: `${fastest.timeMs.toFixed(3)} ms`,
+            },
+            ...prev,
+          ].slice(0, 10)
+        );
+      }
     } catch (error) {
       console.error(error);
       alert(error instanceof Error ? error.message : "No se pudo ejecutar el benchmark.");
@@ -218,16 +224,6 @@ export function Rendimiento() {
       setIsRunning(false);
     }
   };
-
-  const linealMs = searchComparison?.linealMs ?? 85.3;
-  const binariaMs = searchComparison?.binariaMs ?? 12.4;
-  const maxSearch = Math.max(linealMs, binariaMs, 1);
-  const improvement =
-    searchComparison?.improvementPct ?? (1 - binariaMs / Math.max(linealMs, 0.0001)) * 100;
-  const searchHasTie = Math.abs(linealMs - binariaMs) < 0.01;
-  const binaryIsFaster = binariaMs < linealMs;
-  const binarySpeedUp = linealMs / Math.max(binariaMs, 0.0001);
-  const linearSpeedUp = binariaMs / Math.max(linealMs, 0.0001);
 
   const orderedGrowthData = useMemo(() => {
     return [...growthData].sort(
@@ -247,26 +243,23 @@ export function Rendimiento() {
     ];
   }, [orderedGrowthData, selectedSizeFilter]);
 
-  const filteredPerformanceData = useMemo(() => {
-    if (selectedAlgorithm === "all") {
-      return performanceData;
-    }
-    const selectedLabel = algorithmLabelByKey[selectedAlgorithm];
-    return performanceData.filter((item) => item.name === selectedLabel);
-  }, [performanceData, selectedAlgorithm]);
-
-  const filteredHistorial = useMemo(() => {
-    return historial.filter((item) => {
-      const matchesSize = normalizeDatasetSize(item.size) === selectedSizeFilter;
-      const matchesAlgorithm =
-        selectedAlgorithm === "all" ||
-        item.algoritmo.toLowerCase() === algorithmLabelByKey[selectedAlgorithm].toLowerCase();
-      return matchesSize && matchesAlgorithm;
-    });
-  }, [historial, selectedSizeFilter, selectedAlgorithm]);
-
   const currentRunMatchesFilter = !lastRunSize || lastRunSize === selectedSizeFilter;
+  const linealMs = searchComparison?.linealMs ?? 0;
+  const binariaMs = searchComparison?.binariaMs ?? 0;
+  const sortMs = searchComparison?.sortMs ?? 0;
+  const binariaTotalMs = searchComparison?.binariaTotalMs ?? sortMs + binariaMs;
+  const improvementWithoutSort =
+    searchComparison?.improvementWithoutSortPct ?? searchComparison?.improvementPct ?? 0;
+  const improvementWithSort = searchComparison?.improvementWithSortPct ?? 0;
+  const breakEvenQueries = searchComparison?.breakEvenQueries ?? null;
+  const maxSearch = Math.max(linealMs, binariaMs, binariaTotalMs, 1);
 
+  const withoutSortTie = Math.abs(linealMs - binariaMs) < 0.01;
+  const withSortTie = Math.abs(linealMs - binariaTotalMs) < 0.01;
+  const binaryWinsWithoutSort = binariaMs < linealMs;
+  const binaryWinsWithSort = binariaTotalMs < linealMs;
+
+  const visibleAlgorithmSet = new Set(lastRunAlgorithms);
   const ramUsage = systemMetrics?.ramUsagePct ?? 0;
   const cpuUsage = systemMetrics?.cpuUsagePct ?? 0;
   const cpuTemp =
@@ -278,9 +271,8 @@ export function Rendimiento() {
     <div className="p-8 bg-gray-50">
       <TopBar title="Laboratorio de Rendimiento" showFilters={false} />
 
-      {/* Controls */}
       <div className="bg-white rounded-3xl p-6 shadow-sm mb-6">
-        <div className="grid grid-cols-5 gap-4">
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-5">
           <div>
             <label className="block text-xs font-medium text-gray-700 mb-2">Dataset</label>
             <select
@@ -318,7 +310,7 @@ export function Rendimiento() {
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-gray-700 mb-2">Tamaño</label>
+            <label className="block text-xs font-medium text-gray-700 mb-2">Tamano</label>
             <select
               value={dataSize}
               onChange={(event) => {
@@ -334,46 +326,65 @@ export function Rendimiento() {
             </select>
           </div>
 
-          <div>
+          <div className="lg:col-span-2">
             <label className="block text-xs font-medium text-gray-700 mb-2">Algoritmos</label>
-            <select
-              value={selectedAlgorithm}
-              onChange={(event) =>
-                setSelectedAlgorithm(event.target.value as AlgorithmKey | "all")
-              }
-              className="w-full px-4 py-2 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
-            >
-              <option value="all">Todos</option>
-              <option value="bubble">Bubble</option>
-              <option value="selection">Selection</option>
-              <option value="insertion">Insertion</option>
-              <option value="quick">Quick</option>
-            </select>
-          </div>
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={toggleAllAlgorithms}
+                className={`rounded-xl border px-3 py-2 text-xs transition-colors ${
+                  allSelected
+                    ? "border-purple-600 bg-purple-600 text-white"
+                    : "border-gray-200 bg-white text-gray-700 hover:border-purple-300"
+                }`}
+              >
+                {allSelected ? <Check className="inline h-3.5 w-3.5 mr-1" /> : null}
+                Todos
+              </button>
 
-          <div className="flex items-end">
-            <button
-              onClick={handleExecute}
-              disabled={isRunning}
-              className="w-full flex items-center justify-center gap-2 px-6 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-xl hover:shadow-lg transition-all disabled:opacity-50"
-            >
-              {isRunning ? (
-                <>
-                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                  Ejecutando...
-                </>
-              ) : (
-                <>
-                  <BarChart3 className="w-4 h-4" />
-                  Ejecutar
-                </>
-              )}
-            </button>
+              {algorithmConfig.map((algorithm) => {
+                const active = selectedAlgorithms.includes(algorithm.key);
+                return (
+                  <button
+                    key={algorithm.key}
+                    type="button"
+                    onClick={() => toggleAlgorithm(algorithm.key)}
+                    className={`rounded-xl border px-3 py-2 text-xs transition-colors ${
+                      active
+                        ? "border-purple-600 bg-purple-50 text-purple-700"
+                        : "border-gray-200 bg-white text-gray-700 hover:border-purple-300"
+                    }`}
+                  >
+                    {active ? <Check className="inline h-3.5 w-3.5 mr-1" /> : null}
+                    {algorithm.label}
+                  </button>
+                );
+              })}
+            </div>
           </div>
+        </div>
+
+        <div className="mt-4 flex justify-end">
+          <button
+            onClick={handleExecute}
+            disabled={isRunning}
+            className="w-full max-w-xs flex items-center justify-center gap-2 px-6 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-xl hover:shadow-lg transition-all disabled:opacity-50"
+          >
+            {isRunning ? (
+              <>
+                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                Ejecutando...
+              </>
+            ) : (
+              <>
+                <BarChart3 className="w-4 h-4" />
+                Ejecutar benchmark
+              </>
+            )}
+          </button>
         </div>
       </div>
 
-      {/* Dataset filters */}
       <div className="mb-6 flex flex-wrap gap-2">
         {sizeFilters.map((filter) => (
           <button
@@ -391,7 +402,6 @@ export function Rendimiento() {
         ))}
       </div>
 
-      {/* Hardware monitoring */}
       <div className="bg-white rounded-3xl p-6 shadow-sm mb-6">
         <div className="flex items-center gap-3 mb-4">
           <div className="w-10 h-10 rounded-xl bg-indigo-100 flex items-center justify-center">
@@ -400,9 +410,7 @@ export function Rendimiento() {
           <h2 className="text-lg font-semibold text-gray-900">Monitoreo de Hardware</h2>
         </div>
 
-        {metricsNotice ? (
-          <p className="mb-3 text-xs text-amber-700">{metricsNotice}</p>
-        ) : null}
+        {metricsNotice ? <p className="mb-3 text-xs text-amber-700">{metricsNotice}</p> : null}
 
         {systemMetrics ? (
           <p className="mb-3 text-xs text-gray-500">
@@ -412,14 +420,14 @@ export function Rendimiento() {
         ) : null}
 
         {!systemMetrics ? (
-          <p className="text-sm text-gray-500">Cargando métricas...</p>
+          <p className="text-sm text-gray-500">Cargando metricas...</p>
         ) : (
           <div className="grid grid-cols-2 gap-4">
             <div className="rounded-2xl border border-gray-200 bg-gray-50 p-4">
               <p className="text-xs text-gray-500 mb-2">RAM en uso</p>
               <p className="text-xl font-bold text-gray-900">{ramUsage.toFixed(1)}%</p>
               <p className="text-xs text-gray-600 mt-1">
-                {systemMetrics?.ramUsedMb.toFixed(0) ?? "0"} MB / {systemMetrics?.ramTotalMb.toFixed(0) ?? "0"} MB
+                {systemMetrics.ramUsedMb.toFixed(0)} MB / {systemMetrics.ramTotalMb.toFixed(0)} MB
               </p>
               <div className="mt-3 h-2 rounded-full bg-white overflow-hidden">
                 <div
@@ -432,7 +440,9 @@ export function Rendimiento() {
             <div className="rounded-2xl border border-gray-200 bg-gray-50 p-4">
               <p className="text-xs text-gray-500 mb-2">CPU en uso</p>
               <p className="text-xl font-bold text-gray-900">{cpuUsage.toFixed(1)}%</p>
-              <p className="text-xs text-gray-600 mt-1">Carga del sistema: {systemMetrics?.systemLoad.toFixed(2) ?? "0.00"}</p>
+              <p className="text-xs text-gray-600 mt-1">
+                Carga del sistema: {systemMetrics.systemLoad.toFixed(2)}
+              </p>
               <div className="mt-3 h-2 rounded-full bg-white overflow-hidden">
                 <div
                   className="h-full bg-gradient-to-r from-emerald-400 to-green-500"
@@ -447,42 +457,42 @@ export function Rendimiento() {
             </div>
 
             <div className="rounded-2xl border border-gray-200 bg-gray-50 p-4">
-              <p className="text-xs text-gray-500 mb-1">Núcleos CPU</p>
-              <p className="text-lg font-semibold text-gray-900">{systemMetrics?.cpuCores ?? 0}</p>
+              <p className="text-xs text-gray-500 mb-1">Nucleos CPU</p>
+              <p className="text-lg font-semibold text-gray-900">{systemMetrics.cpuCores}</p>
             </div>
           </div>
         )}
       </div>
 
-      {showResults && (
-        <div className="grid grid-cols-2 gap-6">
-          {/* Bar chart - Tiempos por algoritmo */}
+      {showResults ? (
+        <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
           <div className="bg-white rounded-3xl p-6 shadow-sm">
             <div className="flex items-center gap-3 mb-4">
               <div className="w-10 h-10 rounded-xl bg-purple-100 flex items-center justify-center">
                 <BarChart3 className="w-5 h-5 text-purple-600" />
               </div>
-              <h2 className="text-lg font-semibold text-gray-900">Tiempos por Algoritmo</h2>
+              <h2 className="text-lg font-semibold text-gray-900">Tiempos por algoritmo</h2>
             </div>
 
             {currentRunMatchesFilter ? (
               <>
                 <ResponsiveContainer width="100%" height={300}>
-                  <BarChart data={filteredPerformanceData}>
+                  <BarChart data={performanceData}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                     <XAxis dataKey="name" stroke="#6b7280" />
                     <YAxis stroke="#6b7280" label={{ value: "ms", angle: -90, position: "insideLeft" }} />
                     <Tooltip />
-                    <Bar dataKey="tiempo" fill="#8b5cf6" radius={[8, 8, 0, 0]} />
+                    <Bar dataKey="tiempo" radius={[8, 8, 0, 0]}>
+                      {performanceData.map((item) => (
+                        <Cell key={`${item.name}-${item.algorithm}`} fill={item.color} />
+                      ))}
+                    </Bar>
                   </BarChart>
                 </ResponsiveContainer>
 
                 <div className="grid grid-cols-2 gap-3 mt-4">
-                  {filteredPerformanceData.map((item) => (
-                    <div
-                      key={item.name}
-                      className="flex items-center justify-between p-3 rounded-xl bg-gray-50"
-                    >
+                  {performanceData.map((item) => (
+                    <div key={`${item.name}-summary`} className="flex items-center justify-between p-3 rounded-xl bg-gray-50">
                       <span className="text-sm text-gray-700">{item.name}</span>
                       <span className="font-semibold text-gray-900">{item.tiempo} ms</span>
                     </div>
@@ -496,13 +506,12 @@ export function Rendimiento() {
             )}
           </div>
 
-          {/* Line chart - Curva de crecimiento */}
           <div className="bg-white rounded-3xl p-6 shadow-sm">
             <div className="flex items-center gap-3 mb-4">
               <div className="w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center">
                 <TrendingUp className="w-5 h-5 text-blue-600" />
               </div>
-              <h2 className="text-lg font-semibold text-gray-900">Curva de Crecimiento</h2>
+              <h2 className="text-lg font-semibold text-gray-900">Curva de crecimiento</h2>
             </div>
 
             <ResponsiveContainer width="100%" height={300}>
@@ -512,28 +521,27 @@ export function Rendimiento() {
                 <YAxis stroke="#6b7280" label={{ value: "ms", angle: -90, position: "insideLeft" }} />
                 <Tooltip />
                 <Legend />
-                {(selectedAlgorithm === "all" || selectedAlgorithm === "bubble") && (
+                {visibleAlgorithmSet.has("bubble") && (
                   <Line key="bubble-line" type="monotone" dataKey="bubble" stroke="#ef4444" strokeWidth={2} />
                 )}
-                {(selectedAlgorithm === "all" || selectedAlgorithm === "selection") && (
+                {visibleAlgorithmSet.has("selection") && (
                   <Line key="selection-line" type="monotone" dataKey="selection" stroke="#f59e0b" strokeWidth={2} />
                 )}
-                {(selectedAlgorithm === "all" || selectedAlgorithm === "insertion") && (
+                {visibleAlgorithmSet.has("insertion") && (
                   <Line key="insertion-line" type="monotone" dataKey="insertion" stroke="#10b981" strokeWidth={2} />
                 )}
-                {(selectedAlgorithm === "all" || selectedAlgorithm === "quick") && (
+                {visibleAlgorithmSet.has("quick") && (
                   <Line key="quick-line" type="monotone" dataKey="quick" stroke="#3b82f6" strokeWidth={2} />
                 )}
               </LineChart>
             </ResponsiveContainer>
           </div>
 
-          {/* Historial de ejecuciones */}
           <div className="bg-white rounded-3xl p-6 shadow-sm">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">Historial de Ejecuciones</h2>
-
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">Historial de ejecuciones</h2>
             <div className="space-y-3">
-              {(filteredHistorial.length ? filteredHistorial : historial).map((item, index) => (
+              {historial.length === 0 && <p className="text-sm text-gray-500">Aun no hay ejecuciones registradas.</p>}
+              {historial.map((item, index) => (
                 <div
                   key={`${item.fecha}-${index}`}
                   className="p-4 rounded-xl border border-gray-200 hover:border-purple-300 transition-colors"
@@ -547,12 +555,15 @@ export function Rendimiento() {
                     </div>
                     <span className="text-sm font-semibold text-purple-600">{item.tiempo}</span>
                   </div>
-                  <div className="flex gap-2">
+                  <div className="flex flex-wrap gap-2">
                     <span className="text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded-full">
-                      {item.algoritmo}
+                      {item.size} registros
                     </span>
                     <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full">
-                      {item.size} registros
+                      Algoritmos: {item.algoritmos}
+                    </span>
+                    <span className="text-xs bg-emerald-100 text-emerald-700 px-2 py-1 rounded-full">
+                      Mejor: {item.mejor}
                     </span>
                   </div>
                 </div>
@@ -560,7 +571,6 @@ export function Rendimiento() {
             </div>
           </div>
 
-          {/* Búsqueda sobre datos ordenados */}
           <div className="bg-green-50 rounded-3xl p-6 shadow-sm">
             <div className="flex items-center gap-3 mb-4">
               <div className="w-10 h-10 rounded-xl bg-green-100 flex items-center justify-center">
@@ -570,50 +580,109 @@ export function Rendimiento() {
             </div>
 
             <p className="text-sm text-gray-700 mb-6">
-              Comparación real sobre una copia preordenada por cédula. El tiempo de ordenamiento no se mezcla con la búsqueda binaria.
+              Se reportan ambos escenarios: sin costo de ordenar y con costo de ordenar (sort + binaria).
             </p>
 
             <div className="space-y-4">
-              <div className="bg-white/60 rounded-xl p-4">
+              <div className="bg-white/70 rounded-xl p-4">
                 <div className="flex justify-between mb-2">
-                  <span className="text-sm text-gray-700">Búsqueda Lineal</span>
-                  <span className="font-semibold text-gray-900">{linealMs.toFixed(2)} ms</span>
+                  <span className="text-sm text-gray-700">Busqueda Lineal</span>
+                  <span className="font-semibold text-gray-900">{linealMs.toFixed(3)} ms</span>
                 </div>
                 <div className="h-2 bg-white rounded-full overflow-hidden">
                   <div className="h-full bg-orange-500" style={{ width: `${(linealMs / maxSearch) * 100}%` }}></div>
                 </div>
               </div>
 
-              <div className="bg-white/60 rounded-xl p-4">
+              <div className="bg-white/70 rounded-xl p-4">
                 <div className="flex justify-between mb-2">
-                  <span className="text-sm text-gray-700">Búsqueda Binaria</span>
-                  <span className="font-semibold text-gray-900">{binariaMs.toFixed(2)} ms</span>
+                  <span className="text-sm text-gray-700">Busqueda Binaria (solo buscar)</span>
+                  <span className="font-semibold text-gray-900">{binariaMs.toFixed(3)} ms</span>
                 </div>
                 <div className="h-2 bg-white rounded-full overflow-hidden">
                   <div className="h-full bg-green-500" style={{ width: `${(binariaMs / maxSearch) * 100}%` }}></div>
                 </div>
               </div>
+
+              <div className="bg-white/70 rounded-xl p-4">
+                <div className="flex justify-between mb-2">
+                  <span className="text-sm text-gray-700">Costo de ordenar (sortMs)</span>
+                  <span className="font-semibold text-gray-900">{sortMs.toFixed(3)} ms</span>
+                </div>
+                <div className="h-2 bg-white rounded-full overflow-hidden">
+                  <div className="h-full bg-indigo-500" style={{ width: `${(sortMs / maxSearch) * 100}%` }}></div>
+                </div>
+              </div>
+
+              <div className="bg-white/70 rounded-xl p-4">
+                <div className="flex justify-between mb-2">
+                  <span className="text-sm text-gray-700">Binaria total (sort + search)</span>
+                  <span className="font-semibold text-gray-900">{binariaTotalMs.toFixed(3)} ms</span>
+                </div>
+                <div className="h-2 bg-white rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-emerald-700"
+                    style={{ width: `${(binariaTotalMs / maxSearch) * 100}%` }}
+                  ></div>
+                </div>
+              </div>
             </div>
 
-            <div className="mt-6 p-4 bg-green-100 rounded-xl">
-              <p className="text-sm font-medium text-green-900 mb-1">Conclusión</p>
+            <div className="mt-6 grid grid-cols-1 gap-3 md:grid-cols-2">
+              <div className="rounded-xl bg-white/75 p-4">
+                <p className="text-xs font-medium text-gray-600">Mejora sin costo de ordenar</p>
+                <p className="text-xl font-bold text-gray-900">{formatPercent(improvementWithoutSort)}</p>
+                <p className="mt-1 text-xs text-gray-600">
+                  {withoutSortTie
+                    ? "Empate tecnico entre lineal y binaria."
+                    : binaryWinsWithoutSort
+                      ? "Binaria gana si el dataset ya esta ordenado."
+                      : "Lineal gano en esta medicion puntual."}
+                </p>
+              </div>
+
+              <div className="rounded-xl bg-white/75 p-4">
+                <p className="text-xs font-medium text-gray-600">Mejora con costo de ordenar</p>
+                <p className="text-xl font-bold text-gray-900">{formatPercent(improvementWithSort)}</p>
+                <p className="mt-1 text-xs text-gray-600">
+                  {withSortTie
+                    ? "Empate tecnico al incluir el costo de ordenar."
+                    : binaryWinsWithSort
+                      ? "Incluso ordenando, binaria termina mejor en esta corrida."
+                      : "Con una sola busqueda, lineal es mas conveniente."}
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-4 rounded-xl bg-white/75 p-4">
+              <p className="text-xs font-medium text-gray-600">Break-even queries</p>
+              <p className="text-xl font-bold text-gray-900">
+                {breakEvenQueries === null ? "No aplica" : breakEvenQueries}
+              </p>
+              <p className="mt-1 text-xs text-gray-600">
+                {breakEvenQueries === null
+                  ? "Binaria no recupera el costo de ordenar porque no reduce el tiempo por consulta."
+                  : `A partir de ${breakEvenQueries} busquedas, ordenar primero empieza a amortizarse.`}
+              </p>
+            </div>
+
+            <div className="mt-4 rounded-xl bg-green-100 p-4">
+              <p className="text-sm font-medium text-green-900 mb-1">Conclusion</p>
               <p className="text-xs text-green-800">
-                {searchHasTie
-                  ? "La medición quedó prácticamente empatada entre ambos métodos."
-                  : binaryIsFaster
-                    ? `La búsqueda binaria fue ${binarySpeedUp.toFixed(1)}x más rápida (${improvement.toFixed(1)}% de mejora).`
-                    : `En esta medición la búsqueda lineal fue ${linearSpeedUp.toFixed(1)}x más rápida (${Math.abs(improvement).toFixed(1)}% de diferencia).`}
+                {withSortTie
+                  ? "El costo total de ambas estrategias quedo practicamente igual."
+                  : binaryWinsWithSort
+                    ? "Para este dataset, ordenar y luego usar binaria es la mejor estrategia total."
+                    : "Para consultas aisladas, lineal es mejor; use break-even para decidir desde cuantas consultas conviene ordenar."}
               </p>
             </div>
           </div>
         </div>
-      )}
-
-      {!showResults && (
+      ) : (
         <div className="bg-white rounded-3xl p-12 shadow-sm">
           <div className="text-center text-gray-400">
             <BarChart3 className="w-16 h-16 mx-auto mb-4 opacity-50" />
-            <p className="text-lg">Configure los parámetros y ejecute el experimento</p>
+            <p className="text-lg">Configure los parametros y ejecute el experimento.</p>
           </div>
         </div>
       )}

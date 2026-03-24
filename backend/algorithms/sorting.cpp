@@ -1,7 +1,10 @@
 #include "sorting.h"
 
 #include <chrono>
+#include <cctype>
 #include <functional>
+#include <set>
+#include <string>
 #include <utility>
 
 namespace sorting {
@@ -89,6 +92,51 @@ void quickSort(std::vector<double>& values) {
     quickSortImpl(values, 0, static_cast<int>(values.size()) - 1);
 }
 
+std::string toLower(const std::string& value) {
+    std::string lowered = value;
+    for (char& ch : lowered) {
+        ch = static_cast<char>(std::tolower(static_cast<unsigned char>(ch)));
+    }
+    return lowered;
+}
+
+std::vector<std::string> normalizeAlgorithms(const std::vector<std::string>& algorithms) {
+    static const std::vector<std::string> all = {"bubble", "selection", "insertion", "quick"};
+    if (algorithms.empty()) {
+        return all;
+    }
+
+    std::set<std::string> seen;
+    bool includeAll = false;
+
+    for (const auto& algorithm : algorithms) {
+        const std::string normalized = toLower(algorithm);
+        if (normalized == "all" || normalized == "todos") {
+            includeAll = true;
+            break;
+        }
+    }
+
+    if (includeAll) {
+        return all;
+    }
+
+    std::vector<std::string> selected;
+    for (const auto& candidate : all) {
+        for (const auto& provided : algorithms) {
+            if (toLower(provided) != candidate) {
+                continue;
+            }
+            if (seen.insert(candidate).second) {
+                selected.push_back(candidate);
+            }
+            break;
+        }
+    }
+
+    return selected.empty() ? all : selected;
+}
+
 }  // namespace
 
 double bubbleSortMs(std::vector<double> values) {
@@ -107,22 +155,32 @@ double quickSortMs(std::vector<double> values) {
     return measureSort(values, quickSort);
 }
 
-std::vector<SortTiming> benchmarkSortAlgorithms(const std::vector<double>& values) {
-    if (values.empty()) {
-        return {
-            {"bubble", 0.0},
-            {"selection", 0.0},
-            {"insertion", 0.0},
-            {"quick", 0.0},
-        };
+std::vector<SortTiming> benchmarkSortAlgorithms(
+    const std::vector<double>& values,
+    const std::vector<std::string>& algorithms
+) {
+    const auto selected = normalizeAlgorithms(algorithms);
+    std::vector<SortTiming> timings;
+    timings.reserve(selected.size());
+
+    for (const auto& algorithm : selected) {
+        if (values.empty()) {
+            timings.push_back({algorithm, 0.0});
+            continue;
+        }
+
+        if (algorithm == "bubble") {
+            timings.push_back({algorithm, bubbleSortMs(values)});
+        } else if (algorithm == "selection") {
+            timings.push_back({algorithm, selectionSortMs(values)});
+        } else if (algorithm == "insertion") {
+            timings.push_back({algorithm, insertionSortMs(values)});
+        } else if (algorithm == "quick") {
+            timings.push_back({algorithm, quickSortMs(values)});
+        }
     }
 
-    return {
-        {"bubble", bubbleSortMs(values)},
-        {"selection", selectionSortMs(values)},
-        {"insertion", insertionSortMs(values)},
-        {"quick", quickSortMs(values)},
-    };
+    return timings;
 }
 
 }  // namespace sorting

@@ -16,7 +16,10 @@ double selectionSortMs(std::vector<double> values);
 double insertionSortMs(std::vector<double> values);
 double quickSortMs(std::vector<double> values);
 
-std::vector<SortTiming> benchmarkSortAlgorithms(const std::vector<double>& values);
+std::vector<SortTiming> benchmarkSortAlgorithms(
+    const std::vector<double>& values,
+    const std::vector<std::string>& algorithms = {}
+);
 
 }  // namespace sorting
 

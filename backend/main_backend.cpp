@@ -12,6 +12,7 @@
 #include <mutex>
 #include <optional>
 #include <sstream>
+#include <set>
 #include <string>
 #include <thread>
 #include <unordered_map>
@@ -127,6 +128,70 @@ std::string toLower(const std::string& value) {
         [](unsigned char ch) { return static_cast<char>(std::tolower(ch)); }
     );
     return lowered;
+}
+
+bool isValidIsoDatePrefix(const std::string& value) {
+    if (value.size() < 10) {
+        return false;
+    }
+
+    const std::string date = value.substr(0, 10);
+    if (date[4] != '-' || date[7] != '-') {
+        return false;
+    }
+
+    for (std::size_t index = 0; index < date.size(); ++index) {
+        if (index == 4 || index == 7) {
+            continue;
+        }
+        if (std::isdigit(static_cast<unsigned char>(date[index])) == 0) {
+            return false;
+        }
+    }
+
+    const int month = toIntOrDefault(date.substr(5, 2), -1);
+    const int day = toIntOrDefault(date.substr(8, 2), -1);
+    return month >= 1 && month <= 12 && day >= 1 && day <= 31;
+}
+
+std::vector<std::string> parseSelectedAlgorithms(const json& body) {
+    const std::vector<std::string> allAlgorithms = {"bubble", "selection", "insertion", "quick"};
+    std::set<std::string> selected;
+
+    if (body.contains("algoritmos")) {
+        const auto& raw = body["algoritmos"];
+        if (raw.is_array()) {
+            for (const auto& item : raw) {
+                if (item.is_string()) {
+                    selected.insert(toLower(trim(item.get<std::string>())));
+                }
+            }
+        } else if (raw.is_string()) {
+            std::stringstream splitter(raw.get<std::string>());
+            std::string token;
+            while (std::getline(splitter, token, ',')) {
+                selected.insert(toLower(trim(token)));
+            }
+        }
+    }
+
+    if (selected.empty() && body.contains("algoritmo") && body["algoritmo"].is_string()) {
+        selected.insert(toLower(trim(body["algoritmo"].get<std::string>())));
+    }
+
+    if (selected.empty() || selected.find("all") != selected.end() ||
+        selected.find("todos") != selected.end()) {
+        return allAlgorithms;
+    }
+
+    std::vector<std::string> normalized;
+    for (const auto& algorithm : allAlgorithms) {
+        if (selected.find(algorithm) != selected.end()) {
+            normalized.push_back(algorithm);
+        }
+    }
+
+    return normalized.empty() ? allAlgorithms : normalized;
 }
 
 std::string sugerirTratamiento(const Diagnostico& diagnostico) {
@@ -762,6 +827,71 @@ int main() {
         respondJson(res, arbol_diagnosticos::construirArbol(state.diagnosticos));
     });
 
+    server.Get("/api/diagnosticos/busqueda", [&state](const httplib::Request& req, httplib::Response& res) {
+        const std::string codigo = req.has_param("codigo") ? trim(req.get_param_value("codigo")) : "";
+        const std::string nombre = req.has_param("nombre") ? trim(req.get_param_value("nombre")) : "";
+
+        if (codigo.empty() && nombre.empty()) {
+            respondJson(res, {{"error", "debe enviar codigo o nombre"}}, 400);
+            return;
+        }
+
+        const std::string codigoLower = toLower(codigo);
+        const std::string nombreLower = toLower(nombre);
+
+        std::lock_guard<std::mutex> lock(state.mutex);
+        json resultados = json::array();
+        for (const auto& diagnostico : state.diagnosticos) {
+            const bool matchesCodigo =
+                codigoLower.empty() || toLower(diagnostico.codigo).find(codigoLower) != std::string::npos;
+            const bool matchesNombre =
+                nombreLower.empty() || toLower(diagnostico.nombre).find(nombreLower) != std::string::npos;
+
+            if (matchesCodigo && matchesNombre) {
+                resultados.push_back(diagnosticoToJson(diagnostico));
+            }
+        }
+
+        respondJson(
+            res,
+            {
+                {"codigo", codigo},
+                {"nombre", nombre},
+                {"total", resultados.size()},
+                {"diagnosticos", resultados},
+            }
+        );
+    });
+
+    server.Get("/api/diagnosticos/especialidad", [&state](const httplib::Request& req, httplib::Response& res) {
+        const std::string especialidad =
+            req.has_param("nombre") ? trim(req.get_param_value("nombre")) : "";
+        if (especialidad.empty()) {
+            respondJson(res, {{"error", "nombre de especialidad es obligatorio"}}, 400);
+            return;
+        }
+
+        const std::string requested = toLower(especialidad);
+        std::lock_guard<std::mutex> lock(state.mutex);
+
+        json resultados = json::array();
+        for (const auto& diagnostico : state.diagnosticos) {
+            const std::string current = toLower(diagnostico.subcategoria);
+            if (current == requested || current.find(requested) != std::string::npos) {
+                resultados.push_back(diagnosticoToJson(diagnostico));
+            }
+        }
+
+        respondJson(
+            res,
+            {
+                {"especialidad", especialidad},
+                {"total", resultados.size()},
+                {"diagnosticos", resultados},
+            }
+        );
+    });
+
     server.Get(R"(/api/diagnosticos/(.+))", [&state](const httplib::Request& req, httplib::Response& res) {
         if (req.matches.size() < 2) {
             respondJson(res, {{"error", "codigo invalido"}}, 400);
@@ -864,17 +994,61 @@ int main() {
     });
 
     server.Get("/api/busqueda", [&state](const httplib::Request& req, httplib::Response& res) {
-        const std::string cedula = req.has_param("cedula") ? req.get_param_value("cedula") : "";
-        const std::string nombre = req.has_param("nombre") ? req.get_param_value("nombre") : "";
-        const std::string algoritmo = req.has_param("algoritmo") ? req.get_param_value("algoritmo") : "lineal";
+        const std::string cedula = req.has_param("cedula") ? trim(req.get_param_value("cedula")) : "";
+        const std::string nombre = req.has_param("nombre") ? trim(req.get_param_value("nombre")) : "";
+        const std::string fechaDesde =
+            req.has_param("fechaDesde") ? trim(req.get_param_value("fechaDesde")) : "";
+        const std::string fechaHasta =
+            req.has_param("fechaHasta") ? trim(req.get_param_value("fechaHasta")) : "";
+        const std::string gravedadRaw = req.has_param("gravedad") ? trim(req.get_param_value("gravedad")) : "";
+        const std::string algoritmo = req.has_param("algoritmo") ? trim(req.get_param_value("algoritmo")) : "lineal";
 
-        if (cedula.empty() && nombre.empty()) {
-            respondJson(res, {{"error", "debe enviar cedula o nombre como query param"}}, 400);
+        if (cedula.empty() && nombre.empty() && fechaDesde.empty() && fechaHasta.empty() &&
+            gravedadRaw.empty()) {
+            respondJson(
+                res,
+                {{"error", "debe enviar cedula, nombre, fechaDesde/fechaHasta o gravedad como query param"}},
+                400
+            );
             return;
         }
 
+        if (!fechaDesde.empty() && !isValidIsoDatePrefix(fechaDesde)) {
+            respondJson(res, {{"error", "fechaDesde debe tener formato YYYY-MM-DD"}}, 400);
+            return;
+        }
+        if (!fechaHasta.empty() && !isValidIsoDatePrefix(fechaHasta)) {
+            respondJson(res, {{"error", "fechaHasta debe tener formato YYYY-MM-DD"}}, 400);
+            return;
+        }
+        if (!fechaDesde.empty() && !fechaHasta.empty() && fechaDesde > fechaHasta) {
+            respondJson(res, {{"error", "fechaDesde no puede ser mayor que fechaHasta"}}, 400);
+            return;
+        }
+
+        int gravedad = 0;
+        if (!gravedadRaw.empty()) {
+            gravedad = toIntOrDefault(gravedadRaw, -1);
+            if (gravedad < 1 || gravedad > 5) {
+                respondJson(res, {{"error", "gravedad debe estar entre 1 y 5"}}, 400);
+                return;
+            }
+        }
+
         std::lock_guard<std::mutex> lock(state.mutex);
-        const auto resultado = busquedas::buscarPacientes(state.pacientes, cedula, nombre, algoritmo);
+        busquedas::BusquedaFiltros filtros;
+        filtros.fechaDesde = fechaDesde;
+        filtros.fechaHasta = fechaHasta;
+        filtros.gravedad = gravedad;
+
+        const auto resultado = busquedas::buscarPacientes(
+            state.pacientes,
+            state.consultas,
+            cedula,
+            nombre,
+            filtros,
+            algoritmo
+        );
 
         json resultados = json::array();
         for (const auto& paciente : resultado.resultados) {
@@ -887,8 +1061,21 @@ int main() {
                 {"criterio", resultado.criterio},
                 {"algoritmo", resultado.algoritmo},
                 {"termino", resultado.termino},
-                {"tiempoMs", resultado.algoritmo == "binaria" ? resultado.tiempoBinariaMs : resultado.tiempoLinealMs},
+                {"filtros", {{"fechaDesde", fechaDesde}, {"fechaHasta", fechaHasta}, {"gravedad", gravedad}}},
+                {"filtrosAplicados", resultado.filtrosAplicados},
+                {"tiempoMs",
+                 resultado.algoritmo == "binaria"
+                     ? resultado.tiempoBinariaMs
+                     : (resultado.algoritmo == "ambos"
+                            ? std::min(resultado.tiempoLinealMs, resultado.tiempoBinariaMs > 0.0
+                                                                 ? resultado.tiempoBinariaMs
+                                                                 : resultado.tiempoLinealMs)
+                            : resultado.tiempoLinealMs)},
                 {"comparativa", {{"linealMs", resultado.tiempoLinealMs}, {"binariaMs", resultado.tiempoBinariaMs}}},
+                {"linealMs", resultado.tiempoLinealMs},
+                {"binariaMs", resultado.tiempoBinariaMs},
+                {"resultadosLineal", resultado.totalResultadosLineal},
+                {"resultadosBinaria", resultado.totalResultadosBinaria},
                 {"resultados", resultados},
             }
         );
@@ -904,14 +1091,25 @@ int main() {
         const std::string dataset = trim(body.value("dataset", "pacientes"));
         const std::string campo = trim(body.value("campo", "edad"));
         const std::size_t size = body.value("size", 5000);
+        const auto algorithms = parseSelectedAlgorithms(body);
 
         std::lock_guard<std::mutex> lock(state.mutex);
 
         json payload;
         if (dataset == "consultas") {
-            payload = benchmark::benchmarkOrdenamientoConsultas(state.consultas, campo, size);
+            payload = benchmark::benchmarkOrdenamientoConsultas(
+                state.consultas,
+                campo,
+                size,
+                algorithms
+            );
         } else {
-            payload = benchmark::benchmarkOrdenamientoPacientes(state.pacientes, campo, size);
+            payload = benchmark::benchmarkOrdenamientoPacientes(
+                state.pacientes,
+                campo,
+                size,
+                algorithms
+            );
         }
         payload["searchComparison"] = benchmark::benchmarkBusquedaPacientes(state.pacientes, "", size);
 

@@ -6,6 +6,7 @@ import { useDebouncedValue } from "../hooks/useDebouncedValue";
 import {
   type ApiDiagnostico,
   type ApiDiagnosticoTreeNode,
+  getDiagnosticosByEspecialidad,
   getDiagnosticosTree,
 } from "../../lib/api";
 
@@ -17,19 +18,19 @@ function suggestTreatment(diagnostico: ApiDiagnostico) {
   const lowered = `${diagnostico.nombre} ${diagnostico.categoria} ${diagnostico.subcategoria}`.toLowerCase();
 
   if (lowered.includes("infarto") || lowered.includes("cardio")) {
-    return "Monitoreo cardíaco, antiagregantes y control estricto de signos vitales.";
+    return "Monitoreo cardiaco, antiagregantes y control estricto de signos vitales.";
   }
   if (lowered.includes("asma") || lowered.includes("neumo")) {
-    return "Broncodilatadores de rescate y seguimiento respiratorio con plan de control.";
+    return "Broncodilatadores de rescate y seguimiento respiratorio.";
   }
   if (lowered.includes("fractura") || lowered.includes("trauma")) {
-    return "Inmovilización inicial, control del dolor y evaluación quirúrgica.";
+    return "Inmovilizacion inicial, control del dolor y evaluacion quirurgica.";
   }
   if (lowered.includes("pedi")) {
-    return "Tratamiento pediátrico ajustado por peso y seguimiento en consulta de control.";
+    return "Tratamiento pediatrico ajustado por peso y seguimiento en consulta.";
   }
 
-  return "Manejo clínico según protocolo institucional y seguimiento por especialidad.";
+  return "Manejo clinico segun protocolo institucional.";
 }
 
 export function Diagnostico() {
@@ -39,7 +40,9 @@ export function Diagnostico() {
   const [expandedArea, setExpandedArea] = useState<string | null>(null);
   const [expandedEspecialidad, setExpandedEspecialidad] = useState<string | null>(null);
   const [selectedDiagnostico, setSelectedDiagnostico] = useState<ApiDiagnostico | null>(null);
-  const [showCategoriaModal, setShowCategoriaModal] = useState(false);
+  const [especialidadDiagnosticos, setEspecialidadDiagnosticos] = useState<ApiDiagnostico[]>([]);
+  const [isLoadingEspecialidad, setIsLoadingEspecialidad] = useState(false);
+  const [showEspecialidadModal, setShowEspecialidadModal] = useState(false);
   const debouncedSearchInput = useDebouncedValue(searchInput, 280);
 
   useEffect(() => {
@@ -125,23 +128,45 @@ export function Diagnostico() {
     setExpandedEspecialidad(filteredTree[0]?.especialidades[0]?.nombre ?? null);
   }, [filteredTree, searchTerm]);
 
-  const categoriaDiagnosticos = useMemo(() => {
-    if (!selectedDiagnostico) {
-      return [];
+  const activeEspecialidad = selectedDiagnostico?.especialidad ?? expandedEspecialidad ?? "";
+
+  useEffect(() => {
+    if (!activeEspecialidad) {
+      setEspecialidadDiagnosticos([]);
+      return;
     }
 
-    const flattened = diagnosticosTree.flatMap((area) =>
-      area.especialidades.flatMap((especialidad) => especialidad.diagnosticos)
-    );
+    let cancelled = false;
+    setIsLoadingEspecialidad(true);
 
-    return flattened.filter(
-      (diagnostico) => diagnostico.categoria === selectedDiagnostico.categoria
-    );
-  }, [diagnosticosTree, selectedDiagnostico]);
+    const loadEspecialidad = async () => {
+      try {
+        const payload = await getDiagnosticosByEspecialidad(activeEspecialidad);
+        if (!cancelled) {
+          setEspecialidadDiagnosticos(payload.diagnosticos);
+        }
+      } catch (error) {
+        console.error(error);
+        if (!cancelled) {
+          setEspecialidadDiagnosticos([]);
+        }
+      } finally {
+        if (!cancelled) {
+          setIsLoadingEspecialidad(false);
+        }
+      }
+    };
+
+    void loadEspecialidad();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [activeEspecialidad]);
 
   return (
     <div className="p-8 bg-gray-50">
-      <TopBar title="Diagnóstico" showFilters={false} />
+      <TopBar title="Diagnostico" showFilters={false} />
 
       <div className="mb-6">
         <div className="max-w-2xl flex items-center gap-3">
@@ -157,7 +182,7 @@ export function Diagnostico() {
                   setSearchTerm(searchInput.trim());
                 }
               }}
-              placeholder="Buscar por código o nombre de diagnóstico..."
+              placeholder="Buscar por codigo o nombre de diagnostico..."
               className="w-full pl-12 pr-4 py-3 rounded-2xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-purple-500 shadow-sm"
             />
           </div>
@@ -173,7 +198,7 @@ export function Diagnostico() {
 
       <div className="grid grid-cols-2 gap-6">
         <div className="bg-white rounded-3xl p-6 shadow-sm h-[600px] overflow-y-auto">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">Árbol de Diagnósticos</h2>
+          <h2 className="text-lg font-semibold text-gray-900 mb-4">Arbol de Diagnosticos</h2>
 
           <div className="space-y-2">
             {filteredTree.map((area) => (
@@ -198,13 +223,14 @@ export function Diagnostico() {
                     {area.especialidades.map((especialidad) => (
                       <div key={especialidad.nombre}>
                         <button
-                          onClick={() =>
+                          onClick={() => {
                             setExpandedEspecialidad(
-                              expandedEspecialidad === especialidad.nombre
-                                ? null
-                                : especialidad.nombre
-                            )
-                          }
+                              expandedEspecialidad === especialidad.nombre ? null : especialidad.nombre
+                            );
+                            if (especialidad.diagnosticos.length > 0) {
+                              setSelectedDiagnostico(especialidad.diagnosticos[0]);
+                            }
+                          }}
                           className="w-full flex items-center gap-2 p-2 rounded-lg hover:bg-gray-50 transition-colors"
                         >
                           {expandedEspecialidad === especialidad.nombre ? (
@@ -251,12 +277,12 @@ export function Diagnostico() {
                 <div className="w-12 h-12 rounded-2xl bg-purple-100 flex items-center justify-center">
                   <Stethoscope className="w-6 h-6 text-purple-600" />
                 </div>
-                <h2 className="text-xl font-semibold text-gray-900">Detalle del Diagnóstico</h2>
+                <h2 className="text-xl font-semibold text-gray-900">Detalle del Diagnostico</h2>
               </div>
 
               <div className="space-y-6">
                 <div>
-                  <p className="text-xs text-gray-600 mb-1">Código</p>
+                  <p className="text-xs text-gray-600 mb-1">Codigo</p>
                   <p className="text-2xl font-bold text-purple-700">{selectedDiagnostico.codigo}</p>
                 </div>
 
@@ -267,7 +293,7 @@ export function Diagnostico() {
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <p className="text-xs text-gray-600 mb-1">Área</p>
+                    <p className="text-xs text-gray-600 mb-1">Area</p>
                     <p className="font-medium text-gray-900">{selectedDiagnostico.area}</p>
                   </div>
                   <div>
@@ -276,19 +302,8 @@ export function Diagnostico() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <p className="text-xs text-gray-600 mb-1">Categoría</p>
-                    <p className="font-medium text-gray-900">{selectedDiagnostico.categoria}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-gray-600 mb-1">Subcategoría</p>
-                    <p className="font-medium text-gray-900">{selectedDiagnostico.subcategoria}</p>
-                  </div>
-                </div>
-
                 <div>
-                  <p className="text-xs text-gray-600 mb-2">Descripción</p>
+                  <p className="text-xs text-gray-600 mb-2">Descripcion</p>
                   <p className="text-sm text-gray-700 leading-relaxed bg-white/50 p-4 rounded-xl">
                     {selectedDiagnostico.descripcion}
                   </p>
@@ -296,32 +311,32 @@ export function Diagnostico() {
 
                 <button
                   type="button"
-                  onClick={() => setShowCategoriaModal(true)}
+                  onClick={() => setShowEspecialidadModal(true)}
                   className="w-full py-3 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-xl hover:shadow-lg transition-all"
                 >
-                  Mostrar Diagnóstico de {selectedDiagnostico.categoria}
+                  Ver todos los diagnosticos de {selectedDiagnostico.especialidad}
                 </button>
               </div>
             </>
           ) : (
             <div className="h-full flex items-center justify-center text-gray-500">
-              Selecciona un diagnóstico del árbol
+              Selecciona un diagnostico del arbol
             </div>
           )}
         </div>
       </div>
 
       <GlassModal
-        open={showCategoriaModal}
-        onClose={() => setShowCategoriaModal(false)}
+        open={showEspecialidadModal}
+        onClose={() => setShowEspecialidadModal(false)}
         title={
           selectedDiagnostico
-            ? `Diagnósticos de ${selectedDiagnostico.categoria}`
-            : "Diagnósticos por categoría"
+            ? `Diagnosticos de ${selectedDiagnostico.especialidad}`
+            : "Diagnosticos por especialidad"
         }
       >
         <div className="space-y-3">
-          {categoriaDiagnosticos.map((diagnostico) => (
+          {especialidadDiagnosticos.map((diagnostico) => (
             <div
               key={`${diagnostico.codigo}-${diagnostico.especialidad}`}
               className="rounded-2xl border border-white/50 bg-white/55 p-4"
@@ -336,8 +351,12 @@ export function Diagnostico() {
             </div>
           ))}
 
-          {categoriaDiagnosticos.length === 0 && (
-            <p className="text-sm text-gray-500">No hay diagnósticos disponibles para esta categoría.</p>
+          {isLoadingEspecialidad && (
+            <p className="text-sm text-gray-500">Cargando diagnosticos de la especialidad...</p>
+          )}
+
+          {!isLoadingEspecialidad && especialidadDiagnosticos.length === 0 && (
+            <p className="text-sm text-gray-500">No hay diagnosticos disponibles para esta especialidad.</p>
           )}
         </div>
       </GlassModal>
