@@ -33,6 +33,10 @@ function suggestTreatment(diagnostico: ApiDiagnostico) {
   return "Manejo clinico segun protocolo institucional.";
 }
 
+function digitsOnly(value: string) {
+  return value.replace(/\D/g, "");
+}
+
 export function Diagnostico() {
   const [diagnosticosTree, setDiagnosticosTree] = useState<ApiDiagnosticoTreeNode[]>([]);
   const [searchInput, setSearchInput] = useState("");
@@ -67,7 +71,7 @@ export function Diagnostico() {
   }, []);
 
   useEffect(() => {
-    setSearchTerm(debouncedSearchInput.trim());
+    setSearchTerm(digitsOnly(debouncedSearchInput));
   }, [debouncedSearchInput]);
 
   const filteredTree = useMemo(() => {
@@ -83,9 +87,7 @@ export function Diagnostico() {
           .map((especialidad) => ({
             ...especialidad,
             diagnosticos: especialidad.diagnosticos.filter(
-              (diagnostico) =>
-                diagnostico.codigo.toLowerCase().includes(term) ||
-                diagnostico.nombre.toLowerCase().includes(term)
+              (diagnostico) => digitsOnly(diagnostico.codigo).includes(term)
             ),
           }))
           .filter((especialidad) => especialidad.diagnosticos.length > 0),
@@ -174,21 +176,48 @@ export function Diagnostico() {
             <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
             <input
               type="text"
+              inputMode="numeric"
+              pattern="[0-9]*"
               value={searchInput}
-              onChange={(event) => setSearchInput(event.target.value)}
+              onChange={(event) => setSearchInput(digitsOnly(event.target.value))}
               onKeyDown={(event) => {
                 if (event.key === "Enter") {
                   event.preventDefault();
-                  setSearchTerm(searchInput.trim());
+                  setSearchTerm(digitsOnly(searchInput));
+                  return;
+                }
+
+                if (event.ctrlKey || event.metaKey || event.altKey || event.key.length > 1) {
+                  return;
+                }
+
+                if (!/^\d$/.test(event.key)) {
+                  event.preventDefault();
                 }
               }}
-              placeholder="Buscar por codigo o nombre de diagnostico..."
+              onPaste={(event) => {
+                const pastedValue = event.clipboardData.getData("text");
+
+                if (/^\d+$/.test(pastedValue)) {
+                  return;
+                }
+
+                event.preventDefault();
+
+                const sanitizedValue = digitsOnly(pastedValue);
+                const selectionStart = event.currentTarget.selectionStart ?? searchInput.length;
+                const selectionEnd = event.currentTarget.selectionEnd ?? searchInput.length;
+                const nextValue = `${searchInput.slice(0, selectionStart)}${sanitizedValue}${searchInput.slice(selectionEnd)}`;
+
+                setSearchInput(nextValue);
+              }}
+              placeholder="Buscar por la parte numerica del codigo..."
               className="w-full pl-12 pr-4 py-3 rounded-2xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-purple-500 shadow-sm"
             />
           </div>
           <button
             type="button"
-            onClick={() => setSearchTerm(searchInput.trim())}
+            onClick={() => setSearchTerm(digitsOnly(searchInput))}
             className="px-5 py-3 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-2xl hover:shadow-lg transition-all"
           >
             Buscar
