@@ -1,22 +1,21 @@
 # Dashboard Clinico
 
-Sistema de gestion clinica con backend en C++ (CMake + httplib) y frontend React + Vite.
+Sistema de gestion clinica con backend en C++17 (API REST) y frontend en React + TypeScript (Vite).
 
-El proyecto incluye modulos de:
+## Requisitos
 
-- registro y consulta de pacientes,
-- diagnosticos y cola de atencion,
-- busqueda por cedula/nombre con comparativa lineal vs binaria,
-- filtros por fecha y gravedad en el flujo de busqueda,
-- panel de rendimiento y metricas del sistema.
+- Windows con `g++` (MinGW/MSYS2) para compilacion local.
+- Node.js 18+ y `npm`.
+- Docker + Docker Compose (opcional).
+- `make` (opcional, para comandos del `Makefile`).
 
-## Arquitectura
+## Estructura del proyecto
 
-- `backend/`: API REST en C++.
-- `frontend/`: interfaz React/Vite.
-- `compose.yml`: orquesta `api` (puerto 8080) y `web` (puerto 80).
-- `docker/backend/Dockerfile`: compila y empaqueta el binario `clinica_api`.
-- `docker/frontend/Dockerfile`: build de Vite y servido por Nginx.
+- `backend/`: API REST y modulos de estructuras de datos.
+- `frontend/`: interfaz de usuario React/Vite.
+- `docker/`: Dockerfiles y configuraciones de despliegue.
+- `compose.yml`: orquestacion de contenedores.
+- `docs/`: decisiones tecnicas y matriz de cumplimiento.
 
 Persistencia actual:
 
@@ -24,17 +23,44 @@ Persistencia actual:
 - `backend/consultas.csv`
 - `backend/diagnosticos.csv`
 
-## Requisitos
+## Ejecucion local (sin Docker)
 
-- Docker + Docker Compose
-- `make` (opcional, recomendado)
+### Backend
 
-Para desarrollo local sin Docker (frontend):
+```powershell
+g++ -std=c++17 -O2 -Ibackend -Ibackend/third_party `
+  backend/main_backend.cpp `
+  backend/algorithms/searching.cpp `
+  backend/algorithms/sorting.cpp `
+  backend/services/cola_pacientes.cpp `
+  backend/services/busquedas.cpp `
+  backend/services/arbol_diagnosticos.cpp `
+  backend/performance/benchmark.cpp `
+  -o backend/clinic_api.exe -lws2_32
 
-- Node.js 20+
-- npm
+.\backend\clinic_api.exe
+```
 
-## Ejecucion rapida (Docker)
+API: `http://localhost:8080`
+
+### Frontend
+
+```powershell
+cd frontend
+npm ci
+npm run dev
+```
+
+Frontend local: `http://localhost:5173`
+
+Build de produccion:
+
+```powershell
+cd frontend
+npm run build
+```
+
+## Ejecucion con Docker
 
 ### Desarrollo
 
@@ -42,19 +68,13 @@ Para desarrollo local sin Docker (frontend):
 make dev
 ```
 
-- Copia `docker/backend/envs/.env.dev` a `docker/backend/envs/.env`.
-- Levanta servicios con logs en vivo.
-
 ### Produccion/evaluacion
 
 ```bash
 make prod
 ```
 
-- Copia `docker/backend/envs/.env.prod` a `docker/backend/envs/.env`.
-- Levanta servicios en segundo plano.
-
-### Detener y limpiar
+### Detener / limpiar
 
 ```bash
 make down
@@ -62,89 +82,50 @@ make clean
 make stats
 ```
 
-- `down`: detiene contenedores.
-- `clean`: detiene y limpia volumenes/cache definidos por el `Makefile`.
-- `stats`: muestra consumo de recursos en vivo.
-
-## Acceso
+Acceso habitual con Docker:
 
 - Frontend: `http://localhost`
 - Backend API: `http://localhost:8080`
 
-## Variables de entorno backend
+## Generacion programatica de datasets
 
-Plantillas:
+Compilar generador:
 
-- `docker/backend/envs/.env.dev`
-- `docker/backend/envs/.env.prod`
-
-Variables principales:
-
-- `APP_ENV`
-- `PORT`
-- `MAX_PACIENTES`
-- `DB_PATH` (legado de configuracion; la app actual trabaja con CSV)
-
-## Ejecucion local (sin Docker)
-
-### Frontend
-
-```bash
-cd frontend
-npm install
-npm run dev
+```powershell
+g++ -std=c++17 -O2 -Ibackend backend/dataset_generator.cpp -o backend/dataset_generator.exe
 ```
 
-### Backend
+Generar datasets reproducibles de 500, 5000, 50000 y 200000 (semilla fija), dejando `size_5000` como dataset principal:
 
-Ver instrucciones detalladas en `backend/README.md`.
+```powershell
+.\backend\dataset_generator.exe `
+  --sizes 500,5000,50000,200000 `
+  --seed 20260315 `
+  --output-dir .\backend `
+  --main-size 5000
+```
+
+Resultado:
+
+- `backend/size_500/pacientes.csv`, `consultas.csv`, `diagnosticos.csv`
+- `backend/size_5000/...`
+- `backend/size_50000/...`
+- `backend/size_200000/...`
+- `backend/pacientes.csv`, `backend/consultas.csv`, `backend/diagnosticos.csv` (dataset principal)
 
 ## Endpoints principales
 
-Ver detalle completo en `backend/README.md`. Resumen:
-
 - `GET /api/health`
-- `GET /api/pacientes`
-- `GET /api/consultas`
-- `GET /api/diagnosticos`
 - `GET /api/cola`
-- `GET /api/busqueda?nombre=<valor>`
-- `GET /api/busqueda?cedula=<valor>&algoritmo=lineal|binaria|ambos`
+- `GET /api/busqueda?cedula=...&nombre=...&fechaDesde=YYYY-MM-DD&fechaHasta=YYYY-MM-DD&gravedad=1..5&algoritmo=lineal|binaria|ambos`
+- `GET /api/diagnosticos/tree`
+- `GET /api/diagnosticos/especialidad?nombre=Cardiologia`
+- `GET /api/diagnosticos/busqueda?codigo=...&nombre=...`
 - `POST /api/benchmark/sort`
 - `POST /api/benchmark/search`
 - `GET /api/system/metrics`
 
-## Estructura del proyecto
+## Evidencia de cumplimiento del laboratorio
 
-```text
-Dashboard_Clinico/
-├── compose.yml
-├── Makefile
-├── backend/
-│   ├── CMakeLists.txt
-│   ├── main_backend.cpp
-│   ├── algorithms/
-│   ├── services/
-│   ├── performance/
-│   ├── models/
-│   ├── third_party/
-│   ├── pacientes.csv
-│   ├── consultas.csv
-│   └── diagnosticos.csv
-├── frontend/
-│   ├── package.json
-│   ├── src/
-│   └── vite.config.ts
-└── docker/
-	├── backend/
-	│   ├── Dockerfile
-	│   └── envs/
-	└── frontend/
-		├── Dockerfile
-		└── nginx.conf
-```
-
-## Notas
-
-- La pantalla de busqueda integra filtros por fecha y gravedad junto con comparativa de algoritmos.
-- El frontend trabaja con navegacion interna por componentes (sin router tradicional para las vistas principales).
+- [docs/DECISIONES_TECNICAS.md](docs/DECISIONES_TECNICAS.md)
+- [docs/CUMPLIMIENTO_PDF.md](docs/CUMPLIMIENTO_PDF.md)

@@ -1,17 +1,23 @@
 # Backend API - Dashboard Clinico
 
-## Ejecutar servidor
+## Compilar API
 
-Compilar (Windows + MinGW):
-
-```bash
-g++ -std=c++17 -O2 -Ibackend -Ibackend/third_party backend/main_backend.cpp backend/algorithms/searching.cpp backend/algorithms/sorting.cpp backend/services/cola_pacientes.cpp backend/services/busquedas.cpp backend/services/arbol_diagnosticos.cpp backend/performance/benchmark.cpp -o backend/clinic_api.exe -lws2_32
+```powershell
+g++ -std=c++17 -O2 -Ibackend -Ibackend/third_party `
+  backend/main_backend.cpp `
+  backend/algorithms/searching.cpp `
+  backend/algorithms/sorting.cpp `
+  backend/services/cola_pacientes.cpp `
+  backend/services/busquedas.cpp `
+  backend/services/arbol_diagnosticos.cpp `
+  backend/performance/benchmark.cpp `
+  -o backend/clinic_api.exe -lws2_32
 ```
 
-Ejecutar:
+## Ejecutar
 
-```bash
-backend/clinic_api.exe
+```powershell
+.\backend\clinic_api.exe
 ```
 
 Servidor por defecto: `http://localhost:8080`
@@ -37,6 +43,8 @@ Servidor por defecto: `http://localhost:8080`
 
 - `GET /api/diagnosticos`
 - `GET /api/diagnosticos/tree`
+- `GET /api/diagnosticos/busqueda?codigo=...&nombre=...`
+- `GET /api/diagnosticos/especialidad?nombre=Cardiologia`
 - `GET /api/diagnosticos/{codigo}`
 
 ### Cola de atencion
@@ -46,23 +54,28 @@ Servidor por defecto: `http://localhost:8080`
 - `POST /api/cola/atender`
 - `POST /api/cola/atender/{cedula}`
 
-### Busquedas
+### Busquedas de expedientes
 
-- `GET /api/busqueda?nombre=<valor>`
 - `GET /api/busqueda?cedula=<valor>&algoritmo=lineal|binaria|ambos`
+- `GET /api/busqueda?nombre=<prefijo>&algoritmo=lineal|binaria|ambos`
+- `GET /api/busqueda?fechaDesde=YYYY-MM-DD&fechaHasta=YYYY-MM-DD&gravedad=1..5`
+- Se pueden combinar filtros.
 
 ### Rendimiento
 
 - `POST /api/benchmark/sort`
+  - body:
+    - `dataset: "pacientes" | "consultas"`
+    - `campo: string`
+    - `size: number`
+    - `algoritmos: ["bubble","selection","insertion","quick"]` (opcional, tambien acepta `["all"]`)
 - `POST /api/benchmark/search`
 - `GET /api/system/metrics`
 
 ## Datos persistidos
 
-El backend usa CSV existentes en:
-
 - `backend/pacientes.csv`
 - `backend/consultas.csv`
 - `backend/diagnosticos.csv`
 
-`POST /api/pacientes` y `POST /api/consultas` persisten cambios en los CSV.
+`POST /api/pacientes` y `POST /api/consultas` persisten cambios en CSV.

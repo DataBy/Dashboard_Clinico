@@ -44,10 +44,20 @@ export interface ApiBusquedaResponse {
   algoritmo: string;
   termino: string;
   tiempoMs: number;
+  filtros?: {
+    fechaDesde?: string;
+    fechaHasta?: string;
+    gravedad?: number;
+  };
+  filtrosAplicados?: boolean;
   comparativa: {
     linealMs: number;
     binariaMs: number;
   };
+  linealMs?: number;
+  binariaMs?: number;
+  resultadosLineal?: number;
+  resultadosBinaria?: number;
   resultados: ApiPaciente[];
 }
 
@@ -55,6 +65,7 @@ export interface ApiSortBenchmarkResponse {
   dataset: string;
   campo: string;
   size: number;
+  selectedAlgorithms?: string[];
   results: Array<{
     name: string;
     algorithm: string;
@@ -75,7 +86,12 @@ export interface ApiSearchBenchmarkResponse {
   cedula: string;
   linealMs: number;
   binariaMs: number;
+  sortMs: number;
+  binariaTotalMs: number;
   improvementPct: number;
+  improvementWithoutSortPct?: number;
+  improvementWithSortPct?: number;
+  breakEvenQueries?: number | null;
   found: boolean;
 }
 
@@ -168,6 +184,33 @@ export function getDiagnosticosTree() {
   return request<ApiDiagnosticoTreeNode[]>("/api/diagnosticos/tree");
 }
 
+export function searchDiagnosticos(params: { codigo?: string; nombre?: string }) {
+  const query = new URLSearchParams();
+  if (params.codigo) {
+    query.set("codigo", params.codigo);
+  }
+  if (params.nombre) {
+    query.set("nombre", params.nombre);
+  }
+  const suffix = query.toString();
+  return request<{
+    codigo: string;
+    nombre: string;
+    total: number;
+    diagnosticos: ApiDiagnostico[];
+  }>(`/api/diagnosticos/busqueda${suffix ? `?${suffix}` : ""}`);
+}
+
+export function getDiagnosticosByEspecialidad(especialidad: string) {
+  const query = new URLSearchParams();
+  query.set("nombre", especialidad);
+  return request<{
+    especialidad: string;
+    total: number;
+    diagnosticos: ApiDiagnostico[];
+  }>(`/api/diagnosticos/especialidad?${query.toString()}`);
+}
+
 export function getCola() {
   return request<ApiPaciente[]>("/api/cola");
 }
@@ -211,6 +254,9 @@ export function atenderPaciente(cedula: string) {
 export function buscarPacientes(params: {
   cedula?: string;
   nombre?: string;
+  fechaDesde?: string;
+  fechaHasta?: string;
+  gravedad?: number;
   algoritmo?: "lineal" | "binaria" | "ambos";
 }) {
   const query = new URLSearchParams();
@@ -219,6 +265,15 @@ export function buscarPacientes(params: {
   }
   if (params.nombre) {
     query.set("nombre", params.nombre);
+  }
+  if (params.fechaDesde) {
+    query.set("fechaDesde", params.fechaDesde);
+  }
+  if (params.fechaHasta) {
+    query.set("fechaHasta", params.fechaHasta);
+  }
+  if (params.gravedad && params.gravedad >= 1 && params.gravedad <= 5) {
+    query.set("gravedad", String(params.gravedad));
   }
   if (params.algoritmo) {
     query.set("algoritmo", params.algoritmo);
@@ -231,6 +286,7 @@ export function runSortBenchmark(payload: {
   dataset: "pacientes" | "consultas";
   campo: string;
   size: number;
+  algoritmos?: Array<"bubble" | "selection" | "insertion" | "quick">;
 }) {
   return request<ApiSortBenchmarkResponse>("/api/benchmark/sort", {
     method: "POST",
