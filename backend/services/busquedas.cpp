@@ -540,7 +540,7 @@ BusquedaRespuesta buscarPacientes(
         response.termino = "*";
     }
 
-    const auto linealStart = std::chrono::high_resolution_clock::now();
+    const auto linealStart = std::chrono::steady_clock::now();
     if (searchByCedula) {
         response.resultadosLineal = buscarCedulaLineal(
             pacientes,
@@ -574,12 +574,14 @@ BusquedaRespuesta buscarPacientes(
             resultLimit
         );
     }
-    const auto linealEnd = std::chrono::high_resolution_clock::now();
-    response.tiempoLinealMs =
-        std::chrono::duration<double, std::milli>(linealEnd - linealStart).count();
+    const auto linealEnd = std::chrono::steady_clock::now();
+    response.tiempoLinealMs = std::max(
+        0.0,
+        std::chrono::duration<double, std::milli>(linealEnd - linealStart).count()
+    );
 
     if (binaryApplicable) {
-        const auto binariaStart = std::chrono::high_resolution_clock::now();
+        const auto binariaStart = std::chrono::steady_clock::now();
         if (searchByCedula) {
             response.resultadosBinaria = buscarCedulaBinaria(
                 cedulaOrdenada,
@@ -604,9 +606,11 @@ BusquedaRespuesta buscarPacientes(
                 resultLimit
             );
         }
-        const auto binariaEnd = std::chrono::high_resolution_clock::now();
-        response.tiempoBinariaMs =
-            std::chrono::duration<double, std::milli>(binariaEnd - binariaStart).count();
+        const auto binariaEnd = std::chrono::steady_clock::now();
+        response.tiempoBinariaMs = std::max(
+            0.0,
+            std::chrono::duration<double, std::milli>(binariaEnd - binariaStart).count()
+        );
     } else {
         response.resultadosBinaria = response.resultadosLineal;
         response.tiempoBinariaMs = 0.0;

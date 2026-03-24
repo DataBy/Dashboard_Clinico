@@ -65,6 +65,7 @@ export interface ApiSortBenchmarkResponse {
   dataset: string;
   campo: string;
   size: number;
+  sampleSize?: number;
   selectedAlgorithms?: string[];
   results: Array<{
     name: string;

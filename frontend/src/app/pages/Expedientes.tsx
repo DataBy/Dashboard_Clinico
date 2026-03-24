@@ -51,6 +51,13 @@ function normalizeCedula(value: string) {
   return value.replace(/[^a-z0-9]/gi, "").toLowerCase();
 }
 
+function normalizeSearchTerm(value: string) {
+  return normalizeText(value)
+    .replace(/[^a-z0-9\s]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 function parseConsultaDateMs(value: string) {
   const parsed = new Date(value.replace(" ", "T"));
   return Number.isNaN(parsed.getTime()) ? 0 : parsed.getTime();
@@ -176,22 +183,73 @@ export function Expedientes() {
   );
 
   const pacientesFiltradosParaFormulario = useMemo(() => {
-    const term = consultaPacienteSearch.trim();
-    const normalizedTerm = normalizeText(term);
-    const normalizedCedulaTerm = normalizeCedula(term);
+    const normalizedSearch = normalizeSearchTerm(consultaPacienteSearch);
+    const searchTokens = normalizedSearch.split(" ").filter(Boolean);
+    const compactCedulaSearch = normalizeCedula(consultaPacienteSearch);
+
+    const getMatchRank = (item: ApiPaciente) => {
+      const normalizedCedulaPaciente = normalizeCedula(item.cedula);
+      const normalizedNombrePaciente = normalizeSearchTerm(item.nombre);
+      const normalizedCombined = `${normalizedCedulaPaciente} ${normalizedNombrePaciente}`;
+
+      if (
+        (compactCedulaSearch && normalizedCedulaPaciente === compactCedulaSearch) ||
+        (normalizedSearch && normalizedNombrePaciente === normalizedSearch)
+      ) {
+        return 0;
+      }
+
+      if (
+        (compactCedulaSearch && normalizedCedulaPaciente.startsWith(compactCedulaSearch)) ||
+        (normalizedSearch && normalizedNombrePaciente.startsWith(normalizedSearch))
+      ) {
+        return 1;
+      }
+
+      if (
+        (compactCedulaSearch && normalizedCedulaPaciente.includes(compactCedulaSearch)) ||
+        (normalizedSearch && normalizedNombrePaciente.includes(normalizedSearch))
+      ) {
+        return 2;
+      }
+
+      if (searchTokens.length > 0 && searchTokens.every((token) => normalizedCombined.includes(token))) {
+        return 3;
+      }
+
+      return 4;
+    };
 
     return pacientes
       .filter((item) => {
-      if (!term) {
-        return true;
-      }
+        if (!normalizedSearch && !compactCedulaSearch) {
+          return true;
+        }
 
-      return (
-        normalizeCedula(item.cedula).includes(normalizedCedulaTerm) ||
-        normalizeText(item.nombre).includes(normalizedTerm)
-      );
+        const normalizedCedulaPaciente = normalizeCedula(item.cedula);
+        const normalizedNombrePaciente = normalizeSearchTerm(item.nombre);
+        const normalizedCombined = `${normalizedCedulaPaciente} ${normalizedNombrePaciente}`;
+
+        const matchesCedula =
+          compactCedulaSearch.length > 0 &&
+          normalizedCedulaPaciente.includes(compactCedulaSearch);
+        const matchesNombre =
+          normalizedSearch.length > 0 && normalizedNombrePaciente.includes(normalizedSearch);
+        const matchesTokens =
+          searchTokens.length > 0 && searchTokens.every((token) => normalizedCombined.includes(token));
+
+        return matchesCedula || matchesNombre || matchesTokens;
       })
-      .sort((a, b) => a.nombre.localeCompare(b.nombre, "es"));
+      .sort((a, b) => {
+        const rankA = getMatchRank(a);
+        const rankB = getMatchRank(b);
+
+        if (rankA !== rankB) {
+          return rankA - rankB;
+        }
+
+        return a.nombre.localeCompare(b.nombre, "es");
+      });
   }, [consultaPacienteSearch, pacientes]);
 
   const consultasFiltradas = useMemo(() => {
@@ -242,6 +300,14 @@ export function Expedientes() {
     }
     return pacientesByCedula.get(selectedConsulta.cedulaPaciente) ?? null;
   }, [pacientesByCedula, selectedConsulta]);
+
+  const pacienteSeleccionadoFormulario = useMemo(() => {
+    if (!consultaForm.cedulaPaciente) {
+      return null;
+    }
+
+    return pacientesByCedula.get(consultaForm.cedulaPaciente) ?? null;
+  }, [consultaForm.cedulaPaciente, pacientesByCedula]);
 
   const costoPromedio = consultasFiltradas.length
     ? Math.round(
@@ -359,36 +425,6 @@ export function Expedientes() {
       pacientesByCedula,
     ]
   );
-
-  useEffect(() => {
-    if (!isNuevaConsultaOpen) {
-      return;
-    }
-
-    const term = consultaPacienteSearch.trim();
-    if (!term) {
-      return;
-    }
-
-    const firstMatch = pacientesFiltradosParaFormulario[0];
-    if (!firstMatch) {
-      setConsultaForm((prev) => ({
-        ...prev,
-        cedulaPaciente: "",
-      }));
-      return;
-    }
-
-    if (consultaForm.cedulaPaciente !== firstMatch.cedula) {
-      handlePacienteSelection(firstMatch.cedula);
-    }
-  }, [
-    consultaForm.cedulaPaciente,
-    consultaPacienteSearch,
-    handlePacienteSelection,
-    isNuevaConsultaOpen,
-    pacientesFiltradosParaFormulario,
-  ]);
 
   const submitNuevaConsulta = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -762,7 +798,10 @@ export function Expedientes() {
                       <button
                         key={`search-${item.cedula}`}
                         type="button"
-                        onClick={() => handlePacienteSelection(item.cedula)}
+                        onClick={() => {
+                          handlePacienteSelection(item.cedula);
+                          setConsultaPacienteSearch(`${item.cedula} - ${item.nombre}`);
+                        }}
                         className={`w-full rounded-lg px-2 py-1.5 text-left text-sm transition-colors ${
                           consultaForm.cedulaPaciente === item.cedula
                             ? "bg-purple-100 text-purple-800"
@@ -783,20 +822,15 @@ export function Expedientes() {
               )}
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Paciente</label>
-              <select
-                value={consultaForm.cedulaPaciente}
-                onChange={(event) => handlePacienteSelection(event.target.value)}
-                className="w-full rounded-xl border border-gray-200 bg-white/90 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
-              >
-                <option value="">Selecciona un paciente</option>
-                {pacientesFiltradosParaFormulario.map((item) => (
-                  <option key={item.cedula} value={item.cedula}>
-                    {item.cedula} - {item.nombre}
-                  </option>
-                ))}
-              </select>
+            <div className="md:col-span-2 rounded-xl border border-gray-200 bg-white/80 px-4 py-3">
+              <p className="text-xs font-medium uppercase tracking-wide text-gray-500">
+                Paciente seleccionado
+              </p>
+              <p className="mt-1 text-sm text-gray-900">
+                {pacienteSeleccionadoFormulario
+                  ? `${pacienteSeleccionadoFormulario.cedula} - ${pacienteSeleccionadoFormulario.nombre}`
+                  : "Selecciona un paciente desde el buscador."}
+              </p>
             </div>
 
             <div>

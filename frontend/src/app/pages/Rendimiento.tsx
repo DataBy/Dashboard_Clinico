@@ -78,6 +78,13 @@ function formatPercent(value: number) {
   return `${value.toFixed(2)}%`;
 }
 
+function clampPercent0To100(value: number) {
+  if (!Number.isFinite(value)) {
+    return 0;
+  }
+  return Math.min(100, Math.max(0, value));
+}
+
 export function Rendimiento() {
   const [dataset, setDataset] = useState("pacientes");
   const [sortBy, setSortBy] = useState("nombre");
@@ -88,6 +95,7 @@ export function Rendimiento() {
   const [lastRunSize, setLastRunSize] = useState<string | null>(null);
   const [isRunning, setIsRunning] = useState(false);
   const [showResults, setShowResults] = useState(false);
+  const [benchmarkError, setBenchmarkError] = useState<string | null>(null);
   const [performanceData, setPerformanceData] = useState<PerformanceBarItem[]>([]);
   const [growthData, setGrowthData] = useState<GrowthItem[]>([]);
   const [searchComparison, setSearchComparison] = useState<ApiSearchBenchmarkResponse | null>(null);
@@ -131,15 +139,16 @@ export function Rendimiento() {
     };
 
     void loadMetrics();
+    const intervalMs = isRunning ? 250 : 1000;
     const interval = window.setInterval(() => {
       void loadMetrics();
-    }, 1000);
+    }, intervalMs);
 
     return () => {
       disposed = true;
       window.clearInterval(interval);
     };
-  }, []);
+  }, [isRunning]);
 
   const toggleAllAlgorithms = () => {
     setSelectedAlgorithms(allSelected ? ["quick"] : allAlgorithmKeys);
@@ -157,6 +166,7 @@ export function Rendimiento() {
 
   const handleExecute = async () => {
     setIsRunning(true);
+    setBenchmarkError(null);
     try {
       const response = await runSortBenchmark({
         dataset: dataset as "pacientes" | "consultas",
@@ -168,20 +178,21 @@ export function Rendimiento() {
       const configByLabel = new Map(algorithmConfig.map((item) => [item.label, item]));
       const normalizedPerformance = response.results.map((result) => {
         const config = configByLabel.get(result.name);
+        const safeTimeMs = Math.max(0, result.timeMs);
         return {
           name: result.name,
           algorithm: (config?.key ?? "quick") as AlgorithmKey,
-          tiempo: Number(result.timeMs.toFixed(3)),
+          tiempo: Number(safeTimeMs.toFixed(3)),
           color: config?.color ?? "#6366f1",
         };
       });
 
       const normalizedGrowth = response.growth.map((item) => ({
         size: toGrowthLabel(item.size),
-        bubble: Number(item.bubble.toFixed(3)),
-        selection: Number(item.selection.toFixed(3)),
-        insertion: Number(item.insertion.toFixed(3)),
-        quick: Number(item.quick.toFixed(3)),
+        bubble: Number(Math.max(0, item.bubble).toFixed(3)),
+        selection: Number(Math.max(0, item.selection).toFixed(3)),
+        insertion: Number(Math.max(0, item.insertion).toFixed(3)),
+        quick: Number(Math.max(0, item.quick).toFixed(3)),
       }));
 
       const selectedFromResponse = (
@@ -198,7 +209,9 @@ export function Rendimiento() {
       setSelectedSizeFilter(dataSize);
       setShowResults(true);
 
-      const fastest = [...response.results].sort((a, b) => a.timeMs - b.timeMs)[0];
+      const fastest = [...response.results]
+        .map((result) => ({ ...result, timeMs: Math.max(0, result.timeMs) }))
+        .sort((a, b) => a.timeMs - b.timeMs)[0];
       if (fastest) {
         setHistorial((prev) =>
           [
@@ -219,7 +232,7 @@ export function Rendimiento() {
       }
     } catch (error) {
       console.error(error);
-      alert(error instanceof Error ? error.message : "No se pudo ejecutar el benchmark.");
+      setBenchmarkError(error instanceof Error ? error.message : "No se pudo ejecutar el benchmark.");
     } finally {
       setIsRunning(false);
     }
@@ -244,13 +257,14 @@ export function Rendimiento() {
   }, [orderedGrowthData, selectedSizeFilter]);
 
   const currentRunMatchesFilter = !lastRunSize || lastRunSize === selectedSizeFilter;
-  const linealMs = searchComparison?.linealMs ?? 0;
-  const binariaMs = searchComparison?.binariaMs ?? 0;
-  const sortMs = searchComparison?.sortMs ?? 0;
-  const binariaTotalMs = searchComparison?.binariaTotalMs ?? sortMs + binariaMs;
-  const improvementWithoutSort =
-    searchComparison?.improvementWithoutSortPct ?? searchComparison?.improvementPct ?? 0;
-  const improvementWithSort = searchComparison?.improvementWithSortPct ?? 0;
+  const linealMs = Math.max(0, searchComparison?.linealMs ?? 0);
+  const binariaMs = Math.max(0, searchComparison?.binariaMs ?? 0);
+  const sortMs = Math.max(0, searchComparison?.sortMs ?? 0);
+  const binariaTotalMs = Math.max(0, searchComparison?.binariaTotalMs ?? sortMs + binariaMs);
+  const improvementWithoutSort = clampPercent0To100(
+    searchComparison?.improvementWithoutSortPct ?? searchComparison?.improvementPct ?? 0
+  );
+  const improvementWithSort = clampPercent0To100(searchComparison?.improvementWithSortPct ?? 0);
   const breakEvenQueries = searchComparison?.breakEvenQueries ?? null;
   const maxSearch = Math.max(linealMs, binariaMs, binariaTotalMs, 1);
 
@@ -383,6 +397,7 @@ export function Rendimiento() {
             )}
           </button>
         </div>
+        {benchmarkError ? <p className="mt-3 text-sm text-red-600">{benchmarkError}</p> : null}
       </div>
 
       <div className="mb-6 flex flex-wrap gap-2">
@@ -409,6 +424,11 @@ export function Rendimiento() {
           </div>
           <h2 className="text-lg font-semibold text-gray-900">Monitoreo de Hardware</h2>
         </div>
+        <p className="mb-3 text-xs text-gray-500">
+          {isRunning
+            ? "Actualizando metricas en tiempo real durante la ejecucion del benchmark."
+            : "Actualizacion periodica cada 1 segundo."}
+        </p>
 
         {metricsNotice ? <p className="mb-3 text-xs text-amber-700">{metricsNotice}</p> : null}
 
@@ -630,7 +650,9 @@ export function Rendimiento() {
 
             <div className="mt-6 grid grid-cols-1 gap-3 md:grid-cols-2">
               <div className="rounded-xl bg-white/75 p-4">
-                <p className="text-xs font-medium text-gray-600">Mejora sin costo de ordenar</p>
+                <p className="text-xs font-medium text-gray-600">
+                  Mejora sin costo de ordenar (0-100)
+                </p>
                 <p className="text-xl font-bold text-gray-900">{formatPercent(improvementWithoutSort)}</p>
                 <p className="mt-1 text-xs text-gray-600">
                   {withoutSortTie
@@ -642,7 +664,9 @@ export function Rendimiento() {
               </div>
 
               <div className="rounded-xl bg-white/75 p-4">
-                <p className="text-xs font-medium text-gray-600">Mejora con costo de ordenar</p>
+                <p className="text-xs font-medium text-gray-600">
+                  Mejora con costo de ordenar (0-100)
+                </p>
                 <p className="text-xl font-bold text-gray-900">{formatPercent(improvementWithSort)}</p>
                 <p className="mt-1 text-xs text-gray-600">
                   {withSortTie
