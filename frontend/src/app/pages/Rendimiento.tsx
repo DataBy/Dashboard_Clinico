@@ -88,6 +88,7 @@ export function Rendimiento() {
   const [lastRunSize, setLastRunSize] = useState<string | null>(null);
   const [isRunning, setIsRunning] = useState(false);
   const [showResults, setShowResults] = useState(false);
+  const [benchmarkError, setBenchmarkError] = useState<string | null>(null);
   const [performanceData, setPerformanceData] = useState<PerformanceBarItem[]>([]);
   const [growthData, setGrowthData] = useState<GrowthItem[]>([]);
   const [searchComparison, setSearchComparison] = useState<ApiSearchBenchmarkResponse | null>(null);
@@ -131,15 +132,16 @@ export function Rendimiento() {
     };
 
     void loadMetrics();
+    const intervalMs = isRunning ? 250 : 1000;
     const interval = window.setInterval(() => {
       void loadMetrics();
-    }, 1000);
+    }, intervalMs);
 
     return () => {
       disposed = true;
       window.clearInterval(interval);
     };
-  }, []);
+  }, [isRunning]);
 
   const toggleAllAlgorithms = () => {
     setSelectedAlgorithms(allSelected ? ["quick"] : allAlgorithmKeys);
@@ -157,6 +159,7 @@ export function Rendimiento() {
 
   const handleExecute = async () => {
     setIsRunning(true);
+    setBenchmarkError(null);
     try {
       const response = await runSortBenchmark({
         dataset: dataset as "pacientes" | "consultas",
@@ -219,7 +222,7 @@ export function Rendimiento() {
       }
     } catch (error) {
       console.error(error);
-      alert(error instanceof Error ? error.message : "No se pudo ejecutar el benchmark.");
+      setBenchmarkError(error instanceof Error ? error.message : "No se pudo ejecutar el benchmark.");
     } finally {
       setIsRunning(false);
     }
@@ -383,6 +386,7 @@ export function Rendimiento() {
             )}
           </button>
         </div>
+        {benchmarkError ? <p className="mt-3 text-sm text-red-600">{benchmarkError}</p> : null}
       </div>
 
       <div className="mb-6 flex flex-wrap gap-2">
@@ -409,6 +413,11 @@ export function Rendimiento() {
           </div>
           <h2 className="text-lg font-semibold text-gray-900">Monitoreo de Hardware</h2>
         </div>
+        <p className="mb-3 text-xs text-gray-500">
+          {isRunning
+            ? "Actualizando metricas en tiempo real durante la ejecucion del benchmark."
+            : "Actualizacion periodica cada 1 segundo."}
+        </p>
 
         {metricsNotice ? <p className="mb-3 text-xs text-amber-700">{metricsNotice}</p> : null}
 

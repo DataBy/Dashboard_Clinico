@@ -1,0 +1,124 @@
+
+
+--- PAGE 1 ---
+Estructuras de Datos 
+ Profesor: Alejandro Alfaro  
+I Cuatrimestre 2026 
+ 
+ 
+Laboratorio 
+Curso: Estructuras de Datos. 
+Docente: Alejandro Alfaro Quesada. (aalfaroq@utn.ac.cr) 
+Fecha de entrega: domingo 15 de marzo del 2026. 
+Hora de entrega: 11:59 pm. 
+ 
+Indicaciones Generales. 
+ 
+- El sistema debe ser programado en el lenguaje C++ utilizando interfaz gráfica. 
+- La prueba se desarrolla bajo la modalidad de laboratorio,  con tiempo de inicio y 
+fin predeterminado. 
+- La prueba puede desarrollarse de individual, en parejas o en grupos de tres.  
+- En cuanto a los equipos de trabajo hay dos reglas que se deben contemplar, las 
+cuales son: 
+o Si por alguna razón no puedan continuar trabajando juntos, todos deben 
+continuar con el código fuente que tienen hasta ese momento; es decir, no 
+se permite que se unan a otro compañero y/o utilizar el código fuente de 
+otro compañero. 
+o En términos de la evaluación y asignación de la nota, los estudiantes 
+serán evaluados de manera individual; lo anterior, para el caso en que el 
+docente compruebe que uno de los estudiantes tuvo poca o nula 
+participación en el desarrollo del proyecto, de acuerdo con las preguntas 
+que se realizarán en el momento de la defensa del proyecto. 
+- Toda prueba evaluada es considerada como un único proyecto, es decir, aunque 
+la evaluación sea dividida por secciones, la completitud de uno o más rubros 
+puede afectar la funcionalidad del sistema, y esto, podría influir en la nota final. 
+- Si algún estudiante es sorprendido en actos fraudulentos, ya sea que los 
+provoque o los consienta, su prueba  y la de los demás implicados,  será 
+automáticamente anulada. 
+- El docente ejecuta el código fuente que está en el proyecto enviado para 
+comprobar que realiza lo solicitado. Por lo que, el docente NO modificará ninguna 
+línea de código, por lo tanto, debe asegurarse que el código fuente funciona 
+correctamente. 
+- El proyecto con el código solo se recibe y se valida desde el Campus Virtual de la 
+UTN. Por cualquier otro medio que se envíe al docente no será revisado. 
+
+--- PAGE 2 ---
+Estructuras de Datos 
+ Profesor: Alejandro Alfaro  
+I Cuatrimestre 2026 
+ 
+ 
+ 
+Sistema de Gestión de Clínica  
+con Análisis de Rendimiento 
+ 
+Objetivo. 
+ 
+Una clínica privada en crecimiento necesita modernizar su sistema de gestión, por lo 
+cual para diseñar este sistema se debe tomar decisiones justificadas sobre qué 
+estructuras de datos y algoritmos usar, y demostrarlo con evidencia de cuáles son 
+las mejores decisiones. 
+ 
+Datos del sistema. 
+ 
+El sistema maneja tres entidades principales: 
+1. Paciente: Cédula, nombre, edad, fecha de registro, nivel de prioridad (1 -
+crítico, 2-urgente, 3-normal), tipo de sangre, diagnóstico asignado. 
+2. Consulta: ID de consulta, cédula de paciente, fecha, médico tratante, 
+diagnóstico, gravedad (1-5), costo. 
+3. Diagnóstico: Código, nombre, categoría, subcategoría, descripción. 
+ 
+Para los datos, debe generar conjuntos de distintos tamaños programáticamente, 
+por ejemplo: 500, 5000, 50000 y 200000 registros de pacientes. Esto es una 
+decisión de diseño desde el inicio, no puede hacerse a mano. 
+ 
+Módulos del sistema.  
+ 
+➢ Módulo 1 — Estructura de atención (Cola con prioridad) 
+ 
+Los pacientes llegan a la clínica y se registran. El sistema debe gestionarlos 
+respetando su nivel de prioridad. Se debe decidir si usa una cola simple, una cola 
+doble o una cola de prioridad, y justificarlo. La interfaz muestra la lista de espera en 
+tiempo real y permite registrar la atención de un paciente. 
+ 
+➢ Módulo 2 — Expedientes y búsquedas 
+ 
+El sistema almacena el historial de consultas de cada paciente. Debe permitir buscar 
+por cédula exacta, por nombre (búsqueda parcial), por rango de fechas y por nivel 
+de gravedad. Aquí se debe implementar tanto búsqueda lineal como búsqueda 
+binaria donde aplique, y la interfaz muestra el tiempo que tomó cada búsqueda para 
+que se pueda comparar. 
+ 
+ 
+
+--- PAGE 3 ---
+Estructuras de Datos 
+ Profesor: Alejandro Alfaro  
+I Cuatrimestre 2026 
+ 
+ 
+➢ Módulo 3 — Árbol de diagnósticos 
+ 
+Los diagnósticos están organizados jerárquicamente: Área médica → Especialidad 
+→ Diagnóstico específico. Por ejemplo: Medicina interna → Cardiología → Infarto 
+agudo de miocardio. El sistema debe permitir navegar el árbol, buscar un 
+diagnóstico por nombre o código, y mostrar todos los diagnósticos de una 
+especialidad. Se debe elegir el tipo de árbol y el tipo de recorrido, y lo justifica. 
+ 
+➢ Módulo 4 — Laboratorio de rendimiento 
+ 
+Desde la interfaz se puede configurar y ejecutar experimentos de rendimiento sobre 
+los datos reales del sistema. Funciona así: 
+• El usuario selecciona qué conjunto de datos ordenar (pacientes por nombre, por 
+edad, por fecha de registro, por prioridad; o consultas por fecha, por gravedad, 
+por costo). Luego selecciona uno o varios algoritmos para las comparaciones 
+(Bubble Sort, Selection Sort, Insertion Sort, Quick sort). Elige el tamaño del 
+conjunto, ejecuta la comparación y la interfaz muestra en tiempo real una gráfica 
+de barras con los tiempos, una gráfica de curva de crecimiento al variar el 
+tamaño y una tabla con comparaciones estilo historial. 
+• Adicionalmente, el módulo permite ejecutar una búsqueda lineal vs una 
+búsqueda binaria sobre ese conjunto ya ordenado, midiendo ambos tiempos y 
+mostrar en la interfaz los resultados que permita evidenciar cuándo vale la pena 
+el costo de ordenar primero. 
+ 
+  

@@ -1093,25 +1093,31 @@ int main() {
         const std::size_t size = body.value("size", 5000);
         const auto algorithms = parseSelectedAlgorithms(body);
 
-        std::lock_guard<std::mutex> lock(state.mutex);
+        std::vector<Paciente> pacientesSnapshot;
+        std::vector<Consulta> consultasSnapshot;
+        {
+            std::lock_guard<std::mutex> lock(state.mutex);
+            pacientesSnapshot = state.pacientes;
+            consultasSnapshot = state.consultas;
+        }
 
         json payload;
         if (dataset == "consultas") {
             payload = benchmark::benchmarkOrdenamientoConsultas(
-                state.consultas,
+                consultasSnapshot,
                 campo,
                 size,
                 algorithms
             );
         } else {
             payload = benchmark::benchmarkOrdenamientoPacientes(
-                state.pacientes,
+                pacientesSnapshot,
                 campo,
                 size,
                 algorithms
             );
         }
-        payload["searchComparison"] = benchmark::benchmarkBusquedaPacientes(state.pacientes, "", size);
+        payload["searchComparison"] = benchmark::benchmarkBusquedaPacientes(pacientesSnapshot, "", size);
 
         respondJson(res, payload);
     });
