@@ -24,6 +24,10 @@ import {
 
 const tiposSangre = ["O+", "O-", "A+", "A-", "B+", "B-", "AB+", "AB-"];
 
+function digitsOnly(value: string) {
+  return value.replace(/\D/g, "");
+}
+
 export function Registro() {
   const [colaOrdenada, setColaOrdenada] = useState<ApiPaciente[]>([]);
   const [diagnosticos, setDiagnosticos] = useState<ApiDiagnostico[]>([]);
@@ -208,9 +212,22 @@ export function Registro() {
             <label className="block text-sm font-medium text-gray-700 mb-2">Cédula</label>
             <input
               type="text"
-              placeholder="001-0000000-0"
+              inputMode="numeric"
+              pattern="[0-9]*"
+              placeholder="00100000000"
               value={formData.cedula}
-              onChange={(event) => setFormData({ ...formData, cedula: event.target.value })}
+              onChange={(event) =>
+                setFormData({ ...formData, cedula: digitsOnly(event.target.value) })
+              }
+              onKeyDown={(event) => {
+                if (event.ctrlKey || event.metaKey || event.altKey || event.key.length > 1) {
+                  return;
+                }
+
+                if (!/^\d$/.test(event.key)) {
+                  event.preventDefault();
+                }
+              }}
               className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-purple-500"
             />
           </div>
@@ -229,10 +246,23 @@ export function Registro() {
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Edad</label>
             <input
-              type="number"
+              type="text"
+              inputMode="numeric"
+              pattern="[0-9]*"
               placeholder="0"
               value={formData.edad}
-              onChange={(event) => setFormData({ ...formData, edad: event.target.value })}
+              onChange={(event) =>
+                setFormData({ ...formData, edad: digitsOnly(event.target.value) })
+              }
+              onKeyDown={(event) => {
+                if (event.ctrlKey || event.metaKey || event.altKey || event.key.length > 1) {
+                  return;
+                }
+
+                if (!/^\d$/.test(event.key)) {
+                  event.preventDefault();
+                }
+              }}
               className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-purple-500"
             />
           </div>
